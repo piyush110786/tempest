@@ -61,28 +61,24 @@ class TestMinimumBasicScenario(manager.ScenarioTest):
         self.assertIn(self.server['id'], [x['id'] for x in servers])
 
     def nova_show(self):
-        got_server = (self.servers_client.show_server(self.server['id'])
-                      ['server'])
-        excluded_keys = ['OS-EXT-AZ:availability_zone']
-        # Exclude these keys because of LP:#1486475
-        excluded_keys.extend(['OS-EXT-STS:power_state', 'updated'])
+        got_server = self.servers_client.show_server(self.server['id'])
         self.assertThat(
             self.server, custom_matchers.MatchesDictExceptForKeys(
-                got_server, excluded_keys=excluded_keys))
+                got_server, excluded_keys=['OS-EXT-AZ:availability_zone']))
 
     def cinder_create(self):
         self.volume = self.create_volume()
 
     def cinder_list(self):
-        volumes = self.volumes_client.list_volumes()['volumes']
+        volumes = self.volumes_client.list_volumes()
         self.assertIn(self.volume['id'], [x['id'] for x in volumes])
 
     def cinder_show(self):
-        volume = self.volumes_client.show_volume(self.volume['id'])['volume']
+        volume = self.volumes_client.show_volume(self.volume['id'])
         self.assertEqual(self.volume, volume)
 
     def nova_reboot(self):
-        self.servers_client.reboot_server(self.server['id'], 'SOFT')
+        self.servers_client.reboot(self.server['id'], 'SOFT')
         self._wait_for_server_status('ACTIVE')
 
     def check_partitions(self):
@@ -98,8 +94,7 @@ class TestMinimumBasicScenario(manager.ScenarioTest):
                         self.server['id'], secgroup['name'])
 
         def wait_for_secgroup_add():
-            body = (self.servers_client.show_server(self.server['id'])
-                    ['server'])
+            body = self.servers_client.show_server(self.server['id'])
             return {'name': secgroup['name']} in body['security_groups']
 
         if not test.call_until_true(wait_for_secgroup_add,

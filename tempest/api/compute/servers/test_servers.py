@@ -52,9 +52,9 @@ class ServersTestJSON(base.BaseV2ComputeTest):
                                          wait_until='ACTIVE')
         id2 = server['id']
         self.assertNotEqual(id1, id2, "Did not create a new server")
-        server = self.client.show_server(id1)['server']
+        server = self.client.show_server(id1)
         name1 = server['name']
-        server = self.client.show_server(id2)['server']
+        server = self.client.show_server(id2)
         name2 = server['name']
         self.assertEqual(name1, name2)
 
@@ -68,7 +68,7 @@ class ServersTestJSON(base.BaseV2ComputeTest):
         self.keypairs_client.list_keypairs()
         server = self.create_test_server(key_name=key_name)
         waiters.wait_for_server_status(self.client, server['id'], 'ACTIVE')
-        server = self.client.show_server(server['id'])['server']
+        server = self.client.show_server(server['id'])
         self.assertEqual(key_name, server['key_name'])
 
     def _update_server_name(self, server_id, status):
@@ -80,7 +80,7 @@ class ServersTestJSON(base.BaseV2ComputeTest):
         waiters.wait_for_server_status(self.client, server_id, status)
 
         # Verify the name of the server has changed
-        server = self.client.show_server(server_id)['server']
+        server = self.client.show_server(server_id)
         self.assertEqual(new_name, server['name'])
         return server
 
@@ -95,7 +95,7 @@ class ServersTestJSON(base.BaseV2ComputeTest):
     def test_update_server_name_in_stop_state(self):
         # The server name should be changed to the the provided value
         server = self.create_test_server(wait_until='ACTIVE')
-        self.client.stop_server(server['id'])
+        self.client.stop(server['id'])
         waiters.wait_for_server_status(self.client, server['id'], 'SHUTOFF')
         updated_server = self._update_server_name(server['id'], 'SHUTOFF')
         self.assertNotIn('progress', updated_server)
@@ -112,7 +112,7 @@ class ServersTestJSON(base.BaseV2ComputeTest):
         waiters.wait_for_server_status(self.client, server['id'], 'ACTIVE')
 
         # Verify the access addresses have been updated
-        server = self.client.show_server(server['id'])['server']
+        server = self.client.show_server(server['id'])
         self.assertEqual('1.1.1.1', server['accessIPv4'])
         self.assertEqual('::babe:202:202', server['accessIPv6'])
 
@@ -121,5 +121,5 @@ class ServersTestJSON(base.BaseV2ComputeTest):
         # Create a server without an IPv4 address(only IPv6 address).
         server = self.create_test_server(accessIPv6='2001:2001::3')
         waiters.wait_for_server_status(self.client, server['id'], 'ACTIVE')
-        server = self.client.show_server(server['id'])['server']
+        server = self.client.show_server(server['id'])
         self.assertEqual('2001:2001::3', server['accessIPv6'])

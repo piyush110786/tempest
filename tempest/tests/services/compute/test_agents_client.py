@@ -12,38 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest_lib.tests import fake_auth_provider
+import httplib2
+
+from oslo_serialization import jsonutils as json
+from oslotest import mockpatch
 
 from tempest.services.compute.json import agents_client
-from tempest.tests.services.compute import base
+from tempest.tests import base
+from tempest.tests import fake_auth_provider
 
 
-class TestAgentsClient(base.BaseComputeServiceTest):
-    FAKE_CREATE_AGENT = {
-        "agent":
-        {
-            "url": "http://foo.com",
-            "hypervisor": "kvm",
-            "md5hash": "md5",
-            "version": "2",
-            "architecture": "x86_64",
-            "os": "linux",
-            "agent_id": 1
-        }
-    }
-
-    FAKE_UPDATE_AGENT = {
-        "agent":
-        {
-            "url": "http://foo.com",
-            "hypervisor": "kvm",
-            "md5hash": "md5",
-            "version": "2",
-            "architecture": "x86_64",
-            "os": "linux",
-            "agent_id": 1
-        }
-    }
+class TestAgentsClient(base.TestCase):
 
     def setUp(self):
         super(TestAgentsClient, self).setUp()
@@ -52,40 +31,56 @@ class TestAgentsClient(base.BaseComputeServiceTest):
                                                  'compute', 'regionOne')
 
     def _test_list_agents(self, bytes_body=False):
-        self.check_service_client_function(
-            self.client.list_agents,
+        body = '{"agents": []}'
+        if bytes_body:
+            body = body.encode('utf-8')
+        expected = []
+        response = (httplib2.Response({'status': 200}), body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.get',
-            {"agents": []},
-            bytes_body)
-        self.check_service_client_function(
-            self.client.list_agents,
-            'tempest.common.service_client.ServiceClient.get',
-            {"agents": []},
-            bytes_body,
-            hypervisor="kvm")
+            return_value=response))
+        self.assertEqual(expected, self.client.list_agents())
 
     def _test_create_agent(self, bytes_body=False):
-        self.check_service_client_function(
-            self.client.create_agent,
+        expected = {"url": "http://foo.com", "hypervisor": "kvm",
+                    "md5hash": "md5", "version": "2", "architecture": "x86_64",
+                    "os": "linux", "agent_id": 1}
+        serialized_body = json.dumps({"agent": expected})
+        if bytes_body:
+            serialized_body = serialized_body.encode('utf-8')
+
+        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.post',
-            self.FAKE_CREATE_AGENT,
-            bytes_body,
+            return_value=mocked_resp))
+        resp = self.client.create_agent(
             url="http://foo.com", hypervisor="kvm", md5hash="md5",
-            version="2", architecture="x86_64", os="linux")
+            version="2", architecture="x86_64", os="linux"
+        )
+        self.assertEqual(expected, resp)
 
     def _test_delete_agent(self):
-        self.check_service_client_function(
-            self.client.delete_agent,
+        mocked_resp = (httplib2.Response({'status': 200}), None)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.delete',
-            {}, agent_id="1")
+            return_value=mocked_resp))
+        self.client.delete_agent("1")
 
     def _test_update_agent(self, bytes_body=False):
-        self.check_service_client_function(
-            self.client.update_agent,
+        expected = {"url": "http://foo.com", "md5hash": "md5", "version": "2",
+                    "agent_id": 1}
+        serialized_body = json.dumps({"agent": expected})
+        if bytes_body:
+            serialized_body = serialized_body.encode('utf-8')
+
+        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.put',
-            self.FAKE_UPDATE_AGENT,
-            bytes_body,
-            agent_id="1", url="http://foo.com", md5hash="md5", version="2")
+            return_value=mocked_resp))
+        resp = self.client.update_agent(
+            "1", url="http://foo.com", md5hash="md5", version="2"
+        )
+        self.assertEqual(expected, resp)
 
     def test_list_agents_with_str_body(self):
         self._test_list_agents()

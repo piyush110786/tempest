@@ -55,7 +55,7 @@ class CleanBFVResource(BaseVolumesClient, BaseSnapshotsClient):
 
     def _delete_attached_snapshots(self,volume_id):
         bfv_snapshots = self.list_snapshots()
-        for snapshot in bfv_snapshots['snapshots']:
+        for snapshot in bfv_snapshots:
             if snapshot['volume_id'] == volume_id:
                 self.delete_snapshot(snapshot['id'])
                 self._wait_for_snapshot_deletion(snapshot['id'])
@@ -65,7 +65,7 @@ class CleanBFVResource(BaseVolumesClient, BaseSnapshotsClient):
         or in available or error state."""
         try:
             res = self.show_volume(volume)
-            if res['volume']['status'] not in ['available', 'error']:
+            if res['status'] not in ['available', 'error']:
                 return True
         except lib_exc.NotFound:
             return True

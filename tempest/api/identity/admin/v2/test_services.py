@@ -38,7 +38,7 @@ class ServicesTestJSON(base.BaseIdentityV2AdminTest):
         type = data_utils.rand_name('type')
         description = data_utils.rand_name('description')
         service_data = self.client.create_service(
-            name, type, description=description)['OS-KSADM:service']
+            name, type, description=description)
         self.assertFalse(service_data['id'] is None)
         self.addCleanup(self._del_service, service_data['id'])
         # Verifying response body of create service
@@ -50,8 +50,7 @@ class ServicesTestJSON(base.BaseIdentityV2AdminTest):
         self.assertIn('description', service_data)
         self.assertEqual(description, service_data['description'])
         # Get service
-        fetched_service = (self.client.get_service(service_data['id'])
-                           ['OS-KSADM:service'])
+        fetched_service = self.client.get_service(service_data['id'])
         # verifying the existence of service created
         self.assertIn('id', fetched_service)
         self.assertEqual(fetched_service['id'], service_data['id'])
@@ -68,7 +67,7 @@ class ServicesTestJSON(base.BaseIdentityV2AdminTest):
         # Create a service only with name and type
         name = data_utils.rand_name('service')
         type = data_utils.rand_name('type')
-        service = self.client.create_service(name, type)['OS-KSADM:service']
+        service = self.client.create_service(name, type)
         self.assertIn('id', service)
         self.addCleanup(self._del_service, service['id'])
         self.assertIn('name', service)
@@ -86,7 +85,7 @@ class ServicesTestJSON(base.BaseIdentityV2AdminTest):
             type = data_utils.rand_name('type')
             description = data_utils.rand_name('description')
             service = self.client.create_service(
-                name, type, description=description)['OS-KSADM:service']
+                name, type, description=description)
             services.append(service)
         service_ids = map(lambda x: x['id'], services)
 
@@ -96,6 +95,6 @@ class ServicesTestJSON(base.BaseIdentityV2AdminTest):
 
         self.addCleanup(delete_services)
         # List and Verify Services
-        body = self.client.list_services()['OS-KSADM:services']
+        body = self.client.list_services()
         found = [serv for serv in body if serv['id'] in service_ids]
         self.assertEqual(len(found), len(services), 'Services not found')

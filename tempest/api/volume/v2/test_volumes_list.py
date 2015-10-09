@@ -47,7 +47,7 @@ class VolumesV2ListTestJSON(base.BaseVolumeTest):
         cls.metadata = {'Type': 'work'}
         for i in range(3):
             volume = cls.create_volume(metadata=cls.metadata)
-            volume = cls.client.show_volume(volume['id'])['volume']
+            volume = cls.client.show_volume(volume['id'])
             cls.volume_list.append(volume)
             cls.volume_id_list.append(volume['id'])
 
@@ -71,8 +71,8 @@ class VolumesV2ListTestJSON(base.BaseVolumeTest):
                       'sort_dir': sort_dir,
                       'sort_key': sort_key
                       }
-            fetched_volume = self.client.list_volumes(
-                detail=True, params=params)['volumes']
+            fetched_volume = self.client.list_volumes(detail=True,
+                                                      params=params)
             self.assertEqual(limit, len(fetched_volume),
                              "The count of volumes is %s, expected:%s " %
                              (len(fetched_volume), limit))
@@ -118,12 +118,12 @@ class VolumesV2ListTestJSON(base.BaseVolumeTest):
         else:
             remaining = None
 
-        # Mark that the current iteration is not from a 'next' link
+        # Mark that we are not comming from a next link
         next = None
 
         while True:
             # Get a list page
-            response = method(params=params, **kwargs)
+            response = method(return_body=True, params=params, **kwargs)
 
             # If we have to check ids
             if remaining is not None:
@@ -149,8 +149,8 @@ class VolumesV2ListTestJSON(base.BaseVolumeTest):
                     # We no longer expect it
                     remaining.remove(element_id)
 
-            # If the current iteration is from a 'next' link, check that the
-            # absolute url is the same as the one used for this request
+            # If we come from a next link check that absolute url is the same
+            # as the one used for this request
             if next:
                 self.assertEqual(next, response.response['content-location'])
 

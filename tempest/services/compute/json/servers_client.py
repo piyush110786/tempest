@@ -14,17 +14,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
-import copy
 import time
+import base64
 
 from oslo_serialization import jsonutils as json
 from six.moves.urllib import parse as urllib
+from tempest_lib import exceptions as lib_exc
 
 from tempest.services.volume.json import boot_from_vol_client
 from tempest.api_schema.response.compute.v2_1 import servers as schema
 from tempest.common import service_client
-from tempest.common import waiters
 from tempest import exceptions
 from tempest import config
 
@@ -39,16 +38,37 @@ class ServersClient(service_client.ServiceClient):
         self.enable_instance_password = enable_instance_password
         self.bfv_cleanup = boot_from_vol_client.get_cleanBFV_obj(auth_provider)
 
-    def create_server(self, **kwargs):
+    def create_server(self, name, image_ref, flavor_ref, **kwargs):
         """
         Creates an instance of a server.
-        Most parameters except the following are passed to the API without
-        any changes.
-        :param disk_config: The name is changed to OS-DCF:diskConfig
-        :param scheduler_hints: The name is changed to os:scheduler_hints and
-        the parameter is set in the same level as the parameter 'server'.
+        name (Required): The name of the server.
+        image_ref (Required): Reference to the image used to build the server.
+        flavor_ref (Required): The flavor used to build the server.
+        Following optional keyword arguments are accepted:
+        adminPass: Sets the initial root password.
+        key_name: Key name of keypair that was created earlier.
+        meta: A dictionary of values to be used as metadata.
+        personality: A list of dictionaries for files to be injected into
+        the server.
+        security_groups: A list of security group dicts.
+        networks: A list of network dicts with UUID and fixed_ip.
+        user_data: User data for instance.
+        availability_zone: Availability zone in which to launch instance.
+        accessIPv4: The IPv4 access address for the server.
+        accessIPv6: The IPv6 access address for the server.
+        min_count: Count of minimum number of instances to launch.
+        max_count: Count of maximum number of instances to launch.
+        disk_config: Determines if user or admin controls disk configuration.
+        return_reservation_id: Enable/Disable the return of reservation id
+        block_device_mapping: Block device mapping for the server.
+        block_device_mapping_v2: Block device mapping V2 for the server.
         """
-        image_ref = kwargs.get("imageRef", CONF.compute.image_ref)
+        post_body = {
+            'name': name,
+            'imageRef': image_ref,
+            'flavorRef': flavor_ref
+        }
+
         if CONF.compute_feature_enabled.boot_from_volume_only:
             kwargs = boot_from_vol_client.set_block_device_mapping_args(
                      image_ref, kwargs)
@@ -57,20 +77,32 @@ class ServersClient(service_client.ServiceClient):
                         "sudo ifconfig eth0 mtu %s" % CONF.compute.mtu_size
             user_data_base64 = base64.b64encode(user_data).decode('utf-8')
             kwargs['user_data'] = user_data_base64
+        if 'key_name' not in kwargs and CONF.validation.run_validation and \
+            CONF.compute.ssh_auth_method == 'keypair' and CONF.compute.keypair_name:
+            kwargs['key_name'] = CONF.compute.keypair_name
 
-        body = copy.deepcopy(kwargs)
-        if body.get('disk_config'):
-            body['OS-DCF:diskConfig'] = body.pop('disk_config')
+        for option in ['personality', 'adminPass', 'key_name',
+                       'security_groups', 'networks', 'user_data',
+                       'availability_zone', 'accessIPv4', 'accessIPv6',
+                       'min_count', 'max_count', ('metadata', 'meta'),
+                       ('OS-DCF:diskConfig', 'disk_config'),
+                       'return_reservation_id', 'block_device_mapping',
+                       'block_device_mapping_v2']:
+            if isinstance(option, tuple):
+                post_param = option[0]
+                key = option[1]
+            else:
+                post_param = option
+                key = option
+            value = kwargs.get(key)
+            if value is not None:
+                post_body[post_param] = value
 
-        hints = None
-        if body.get('scheduler_hints'):
-            hints = {'os:scheduler_hints': body.pop('scheduler_hints')}
+        post_body = {'server': post_body}
 
-        post_body = {'server': body}
-
-        if hints:
+        if 'sched_hints' in kwargs:
+            hints = {'os:scheduler_hints': kwargs.get('sched_hints')}
             post_body = dict(post_body.items() + hints.items())
-
         post_body = json.dumps(post_body)
         resp, body = self.post('servers', post_body)
 
@@ -84,29 +116,48 @@ class ServersClient(service_client.ServiceClient):
         else:
             create_schema = schema.create_server
         self.validate_response(create_schema, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['server'])
 
-    def update_server(self, server_id, **kwargs):
-        """Updates the properties of an existing server.
-        Most parameters except the following are passed to the API without
-        any changes.
-        :param disk_config: The name is changed to OS-DCF:diskConfig
+    def update_server(self, server_id, name=None, meta=None, accessIPv4=None,
+                      accessIPv6=None, disk_config=None):
         """
-        if kwargs.get('disk_config'):
-            kwargs['OS-DCF:diskConfig'] = kwargs.pop('disk_config')
+        Updates the properties of an existing server.
+        server_id: The id of an existing server.
+        name: The name of the server.
+        personality: A list of files to be injected into the server.
+        accessIPv4: The IPv4 access address for the server.
+        accessIPv6: The IPv6 access address for the server.
+        """
 
-        post_body = json.dumps({'server': kwargs})
+        post_body = {}
+
+        if meta is not None:
+            post_body['metadata'] = meta
+
+        if name is not None:
+            post_body['name'] = name
+
+        if accessIPv4 is not None:
+            post_body['accessIPv4'] = accessIPv4
+
+        if accessIPv6 is not None:
+            post_body['accessIPv6'] = accessIPv6
+
+        if disk_config is not None:
+            post_body['OS-DCF:diskConfig'] = disk_config
+
+        post_body = json.dumps({'server': post_body})
         resp, body = self.put("servers/%s" % server_id, post_body)
         body = json.loads(body)
         self.validate_response(schema.update_server, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['server'])
 
     def show_server(self, server_id):
         """Returns the details of an existing server."""
         resp, body = self.get("servers/%s" % server_id)
         body = json.loads(body)
         self.validate_response(schema.get_server, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['server'])
 
     def delete_server(self, server_id):
         """Deletes the given server."""
@@ -114,9 +165,9 @@ class ServersClient(service_client.ServiceClient):
         resp, body = self.delete("servers/%s" % server_id)
         self.validate_response(schema.delete_server, resp, body)
         if CONF.compute_feature_enabled.boot_from_volume_only:
-            waiters.wait_for_server_termination(self, server_id, True)
-            if server['server']['os-extended-volumes:volumes_attached']:
-                self.bfv_cleanup.clean_bfv_resource([server['server'][
+            self.wait_for_server_termination(server_id, True)
+            if server['os-extended-volumes:volumes_attached']:
+                self.bfv_cleanup.clean_bfv_resource([server[
                   'os-extended-volumes:volumes_attached'][0]['id']])
         return service_client.ResponseBody(resp, body)
 
@@ -137,12 +188,30 @@ class ServersClient(service_client.ServiceClient):
         self.validate_response(_schema, resp, body)
         return service_client.ResponseBody(resp, body)
 
+    def wait_for_server_termination(self, server_id, ignore_error=False):
+        """Waits for server to reach termination."""
+        start_time = int(time.time())
+        while True:
+            try:
+                body = self.show_server(server_id)
+            except lib_exc.NotFound:
+                return
+
+            server_status = body['status']
+            if server_status == 'ERROR' and not ignore_error:
+                raise exceptions.BuildErrorException(server_id=server_id)
+
+            if int(time.time()) - start_time >= self.build_timeout:
+                raise exceptions.TimeoutException
+
+            time.sleep(self.build_interval)
+
     def list_addresses(self, server_id):
         """Lists all addresses for a server."""
         resp, body = self.get("servers/%s/ips" % server_id)
         body = json.loads(body)
         self.validate_response(schema.list_addresses, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['addresses'])
 
     def list_addresses_by_network(self, server_id, network_id):
         """Lists all addresses of a specific network type for a server."""
@@ -152,27 +221,38 @@ class ServersClient(service_client.ServiceClient):
         self.validate_response(schema.list_addresses_by_network, resp, body)
         return service_client.ResponseBody(resp, body)
 
-    def action(self, server_id, action_name,
+    def action(self, server_id, action_name, response_key,
                schema=schema.server_actions_common_schema,
-               **kwargs):
+               response_class=service_client.ResponseBody, **kwargs):
         post_body = json.dumps({action_name: kwargs})
         resp, body = self.post('servers/%s/action' % server_id,
                                post_body)
-        if body:
+        if response_key is not None:
             body = json.loads(body)
-        self.validate_response(schema, resp, body)
-        return service_client.ResponseBody(resp, body)
+            # Check for Schema as 'None' because if we do not have any server
+            # action schema implemented yet then they can pass 'None' to skip
+            # the validation.Once all server action has their schema
+            # implemented then, this check can be removed if every actions are
+            # supposed to validate their response.
+            # TODO(GMann): Remove the below 'if' check once all server actions
+            # schema are implemented.
+            if schema is not None:
+                self.validate_response(schema, resp, body)
+            body = body[response_key]
+        else:
+            self.validate_response(schema, resp, body)
+        return response_class(resp, body)
 
     def create_backup(self, server_id, backup_type, rotation, name):
         """Backup a server instance."""
-        return self.action(server_id, "createBackup",
+        return self.action(server_id, "createBackup", None,
                            backup_type=backup_type,
                            rotation=rotation,
                            name=name)
 
     def change_password(self, server_id, adminPass):
         """Changes the root password for the server."""
-        return self.action(server_id, 'changePassword',
+        return self.action(server_id, 'changePassword', None,
                            adminPass=adminPass)
 
     def get_password(self, server_id):
@@ -194,52 +274,49 @@ class ServersClient(service_client.ServiceClient):
                                resp, body)
         return service_client.ResponseBody(resp, body)
 
-    def reboot_server(self, server_id, reboot_type):
+    def reboot(self, server_id, reboot_type):
         """Reboots a server."""
-        return self.action(server_id, 'reboot', type=reboot_type)
+        return self.action(server_id, 'reboot', None, type=reboot_type)
 
-    def rebuild_server(self, server_id, image_ref, **kwargs):
-        """Rebuilds a server with a new image.
-        Most parameters except the following are passed to the API without
-        any changes.
-        :param disk_config: The name is changed to OS-DCF:diskConfig
-        """
+    def rebuild(self, server_id, image_ref, **kwargs):
+        """Rebuilds a server with a new image."""
         kwargs['imageRef'] = image_ref
+        if 'key_name' not in kwargs and CONF.validation.run_validation and \
+            CONF.compute.ssh_auth_method == 'keypair' and CONF.compute.keypair_name:
+            kwargs['key_name'] = CONF.compute.keypair_name
         if 'disk_config' in kwargs:
-            kwargs['OS-DCF:diskConfig'] = kwargs.pop('disk_config')
+            kwargs['OS-DCF:diskConfig'] = kwargs['disk_config']
+            del kwargs['disk_config']
         if self.enable_instance_password:
             rebuild_schema = schema.rebuild_server_with_admin_pass
         else:
             rebuild_schema = schema.rebuild_server
-        return self.action(server_id, 'rebuild',
+        return self.action(server_id, 'rebuild', 'server',
                            rebuild_schema, **kwargs)
 
-    def resize_server(self, server_id, flavor_ref, **kwargs):
-        """Changes the flavor of a server.
-        Most parameters except the following are passed to the API without
-        any changes.
-        :param disk_config: The name is changed to OS-DCF:diskConfig
-        """
+    def resize(self, server_id, flavor_ref, **kwargs):
+        """Changes the flavor of a server."""
         kwargs['flavorRef'] = flavor_ref
         if 'disk_config' in kwargs:
-            kwargs['OS-DCF:diskConfig'] = kwargs.pop('disk_config')
-        return self.action(server_id, 'resize', **kwargs)
+            kwargs['OS-DCF:diskConfig'] = kwargs['disk_config']
+            del kwargs['disk_config']
+        return self.action(server_id, 'resize', None, **kwargs)
 
-    def confirm_resize_server(self, server_id, **kwargs):
+    def confirm_resize(self, server_id, **kwargs):
         """Confirms the flavor change for a server."""
         return self.action(server_id, 'confirmResize',
-                           schema.server_actions_confirm_resize,
+                           None, schema.server_actions_confirm_resize,
                            **kwargs)
 
-    def revert_resize_server(self, server_id, **kwargs):
+    def revert_resize(self, server_id, **kwargs):
         """Reverts a server back to its original flavor."""
-        return self.action(server_id, 'revertResize', **kwargs)
+        return self.action(server_id, 'revertResize', None, **kwargs)
 
     def list_server_metadata(self, server_id):
         resp, body = self.get("servers/%s/metadata" % server_id)
         body = json.loads(body)
         self.validate_response(schema.list_server_metadata, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['metadata'])
 
     def set_server_metadata(self, server_id, meta, no_metadata_field=False):
         if no_metadata_field:
@@ -250,7 +327,7 @@ class ServersClient(service_client.ServiceClient):
                               post_body)
         body = json.loads(body)
         self.validate_response(schema.set_server_metadata, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['metadata'])
 
     def update_server_metadata(self, server_id, meta):
         post_body = json.dumps({'metadata': meta})
@@ -259,14 +336,14 @@ class ServersClient(service_client.ServiceClient):
         body = json.loads(body)
         self.validate_response(schema.update_server_metadata,
                                resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['metadata'])
 
     def get_server_metadata_item(self, server_id, key):
         resp, body = self.get("servers/%s/metadata/%s" % (server_id, key))
         body = json.loads(body)
         self.validate_response(schema.set_get_server_metadata_item,
                                resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['meta'])
 
     def set_server_metadata_item(self, server_id, key, meta):
         post_body = json.dumps({'meta': meta})
@@ -275,7 +352,7 @@ class ServersClient(service_client.ServiceClient):
         body = json.loads(body)
         self.validate_response(schema.set_get_server_metadata_item,
                                resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['meta'])
 
     def delete_server_metadata_item(self, server_id, key):
         resp, body = self.delete("servers/%s/metadata/%s" %
@@ -284,20 +361,25 @@ class ServersClient(service_client.ServiceClient):
                                resp, body)
         return service_client.ResponseBody(resp, body)
 
-    def stop_server(self, server_id, **kwargs):
-        return self.action(server_id, 'os-stop', **kwargs)
+    def stop(self, server_id, **kwargs):
+        return self.action(server_id, 'os-stop', None, **kwargs)
 
-    def start_server(self, server_id, **kwargs):
-        return self.action(server_id, 'os-start', **kwargs)
+    def start(self, server_id, **kwargs):
+        return self.action(server_id, 'os-start', None, **kwargs)
 
-    def attach_volume(self, server_id, **kwargs):
+    def attach_volume(self, server_id, volume_id, device='/dev/vdz'):
         """Attaches a volume to a server instance."""
-        post_body = json.dumps({'volumeAttachment': kwargs})
+        post_body = json.dumps({
+            'volumeAttachment': {
+                'volumeId': volume_id,
+                'device': device,
+            }
+        })
         resp, body = self.post('servers/%s/os-volume_attachments' % server_id,
                                post_body)
         body = json.loads(body)
         self.validate_response(schema.attach_volume, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['volumeAttachment'])
 
     def detach_volume(self, server_id, volume_id):
         """Detaches a volume from a server instance."""
@@ -312,7 +394,7 @@ class ServersClient(service_client.ServiceClient):
             server_id, attach_id))
         body = json.loads(body)
         self.validate_response(schema.get_volume_attachment, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['volumeAttachment'])
 
     def list_volume_attachments(self, server_id):
         """Returns the list of volume attachments for a given instance."""
@@ -320,20 +402,26 @@ class ServersClient(service_client.ServiceClient):
             server_id))
         body = json.loads(body)
         self.validate_response(schema.list_volume_attachments, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, body['volumeAttachments'])
 
     def add_security_group(self, server_id, name):
         """Adds a security group to the server."""
-        return self.action(server_id, 'addSecurityGroup', name=name)
+        return self.action(server_id, 'addSecurityGroup', None, name=name)
 
     def remove_security_group(self, server_id, name):
         """Removes a security group from the server."""
-        return self.action(server_id, 'removeSecurityGroup', name=name)
+        return self.action(server_id, 'removeSecurityGroup', None, name=name)
 
-    def live_migrate_server(self, server_id, **kwargs):
+    def live_migrate_server(self, server_id, dest_host, use_block_migration):
         """This should be called with administrator privileges ."""
 
-        req_body = json.dumps({'os-migrateLive': kwargs})
+        migrate_params = {
+            "disk_over_commit": False,
+            "block_migration": use_block_migration,
+            "host": dest_host
+        }
+
+        req_body = json.dumps({'os-migrateLive': migrate_params})
 
         resp, body = self.post("servers/%s/action" % server_id, req_body)
         self.validate_response(schema.server_actions_common_schema,
@@ -342,52 +430,53 @@ class ServersClient(service_client.ServiceClient):
 
     def migrate_server(self, server_id, **kwargs):
         """Migrates a server to a new host."""
-        return self.action(server_id, 'migrate', **kwargs)
+        return self.action(server_id, 'migrate', None, **kwargs)
 
     def lock_server(self, server_id, **kwargs):
         """Locks the given server."""
-        return self.action(server_id, 'lock', **kwargs)
+        return self.action(server_id, 'lock', None, **kwargs)
 
     def unlock_server(self, server_id, **kwargs):
         """UNlocks the given server."""
-        return self.action(server_id, 'unlock', **kwargs)
+        return self.action(server_id, 'unlock', None, **kwargs)
 
     def suspend_server(self, server_id, **kwargs):
         """Suspends the provided server."""
-        return self.action(server_id, 'suspend', **kwargs)
+        return self.action(server_id, 'suspend', None, **kwargs)
 
     def resume_server(self, server_id, **kwargs):
         """Un-suspends the provided server."""
-        return self.action(server_id, 'resume', **kwargs)
+        return self.action(server_id, 'resume', None, **kwargs)
 
     def pause_server(self, server_id, **kwargs):
         """Pauses the provided server."""
-        return self.action(server_id, 'pause', **kwargs)
+        return self.action(server_id, 'pause', None, **kwargs)
 
     def unpause_server(self, server_id, **kwargs):
         """Un-pauses the provided server."""
-        return self.action(server_id, 'unpause', **kwargs)
+        return self.action(server_id, 'unpause', None, **kwargs)
 
     def reset_state(self, server_id, state='error'):
         """Resets the state of a server to active/error."""
-        return self.action(server_id, 'os-resetState', state=state)
+        return self.action(server_id, 'os-resetState', None, state=state)
 
     def shelve_server(self, server_id, **kwargs):
         """Shelves the provided server."""
-        return self.action(server_id, 'shelve', **kwargs)
+        return self.action(server_id, 'shelve', None, **kwargs)
 
     def unshelve_server(self, server_id, **kwargs):
         """Un-shelves the provided server."""
-        return self.action(server_id, 'unshelve', **kwargs)
+        return self.action(server_id, 'unshelve', None, **kwargs)
 
     def shelve_offload_server(self, server_id, **kwargs):
         """Shelve-offload the provided server."""
-        return self.action(server_id, 'shelveOffload', **kwargs)
+        return self.action(server_id, 'shelveOffload', None, **kwargs)
 
     def get_console_output(self, server_id, length):
         kwargs = {'length': length} if length else {}
-        return self.action(server_id, 'os-getConsoleOutput',
+        return self.action(server_id, 'os-getConsoleOutput', 'output',
                            schema.get_console_output,
+                           response_class=service_client.ResponseBodyData,
                            **kwargs)
 
     def list_virtual_interfaces(self, server_id):
@@ -402,13 +491,14 @@ class ServersClient(service_client.ServiceClient):
 
     def rescue_server(self, server_id, **kwargs):
         """Rescue the provided server."""
-        return self.action(server_id, 'rescue',
+        return self.action(server_id, 'rescue', 'adminPass',
                            schema.rescue_server,
+                           response_class=service_client.ResponseBodyData,
                            **kwargs)
 
     def unrescue_server(self, server_id):
         """Unrescue the provided server."""
-        return self.action(server_id, 'unrescue')
+        return self.action(server_id, 'unrescue', None)
 
     def get_server_diagnostics(self, server_id):
         """Get the usage data for a server."""
@@ -421,7 +511,7 @@ class ServersClient(service_client.ServiceClient):
                               server_id)
         body = json.loads(body)
         self.validate_response(schema.list_instance_actions, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, body['instanceActions'])
 
     def get_instance_action(self, server_id, request_id):
         """Returns the action details of the provided server."""
@@ -429,34 +519,26 @@ class ServersClient(service_client.ServiceClient):
                               (server_id, request_id))
         body = json.loads(body)
         self.validate_response(schema.get_instance_action, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['instanceAction'])
 
     def force_delete_server(self, server_id, **kwargs):
         """Force delete a server."""
-        return self.action(server_id, 'forceDelete', **kwargs)
+        return self.action(server_id, 'forceDelete', None, **kwargs)
 
     def restore_soft_deleted_server(self, server_id, **kwargs):
         """Restore a soft-deleted server."""
-        return self.action(server_id, 'restore', **kwargs)
+        return self.action(server_id, 'restore', None, **kwargs)
 
     def reset_network(self, server_id, **kwargs):
         """Resets the Network of a server"""
-        return self.action(server_id, 'resetNetwork', **kwargs)
+        return self.action(server_id, 'resetNetwork', None, **kwargs)
 
     def inject_network_info(self, server_id, **kwargs):
         """Inject the Network Info into server"""
-        return self.action(server_id, 'injectNetworkInfo', **kwargs)
+        return self.action(server_id, 'injectNetworkInfo', None, **kwargs)
 
     def get_vnc_console(self, server_id, console_type):
         """Get URL of VNC console."""
         return self.action(server_id, "os-getVNCConsole",
-                           schema.get_vnc_console,
+                           "console", schema.get_vnc_console,
                            type=console_type)
-
-    def add_fixed_ip(self, server_id, **kwargs):
-        """Add a fixed IP to input server instance."""
-        return self.action(server_id, 'addFixedIp', **kwargs)
-
-    def remove_fixed_ip(self, server_id, **kwargs):
-        """Remove input fixed IP from input server instance."""
-        return self.action(server_id, 'removeFixedIp', **kwargs)

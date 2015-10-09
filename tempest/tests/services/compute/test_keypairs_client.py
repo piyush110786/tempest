@@ -13,21 +13,24 @@
 #    under the License.
 
 import copy
+import httplib2
 
-from tempest_lib.tests import fake_auth_provider
+from oslo_serialization import jsonutils as json
+from oslotest import mockpatch
 
 from tempest.services.compute.json import keypairs_client
-from tempest.tests.services.compute import base
+from tempest.tests import base
+from tempest.tests import fake_auth_provider
 
 
-class TestKeyPairsClient(base.BaseComputeServiceTest):
+class TestKeyPairsClient(base.TestCase):
 
-    FAKE_KEYPAIR = {"keypair": {
+    FAKE_KEYPAIR = {
         "public_key": "ssh-rsa foo Generated-by-Nova",
         "name": u'\u2740(*\xb4\u25e1`*)\u2740',
         "user_id": "525d55f98980415ba98e634972fa4a10",
         "fingerprint": "76:24:66:49:d7:ca:6e:5c:77:ea:8e:bb:9c:15:5f:98"
-        }}
+        }
 
     def setUp(self):
         super(TestKeyPairsClient, self).setUp()
@@ -36,11 +39,15 @@ class TestKeyPairsClient(base.BaseComputeServiceTest):
             fake_auth, 'compute', 'regionOne')
 
     def _test_list_keypairs(self, bytes_body=False):
-        self.check_service_client_function(
-            self.client.list_keypairs,
+        body = '{"keypairs": []}'
+        if bytes_body:
+            body = body.encode('utf-8')
+        expected = []
+        response = (httplib2.Response({'status': 200}), body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.get',
-            {"keypairs": []},
-            bytes_body)
+            return_value=response))
+        self.assertEqual(expected, self.client.list_keypairs())
 
     def test_list_keypairs_with_str_body(self):
         self._test_list_keypairs()
@@ -50,20 +57,23 @@ class TestKeyPairsClient(base.BaseComputeServiceTest):
 
     def _test_show_keypair(self, bytes_body=False):
         fake_keypair = copy.deepcopy(self.FAKE_KEYPAIR)
-        fake_keypair["keypair"].update({
+        fake_keypair.update({
             "deleted": False,
             "created_at": "2015-07-22T04:53:52.000000",
             "updated_at": None,
             "deleted_at": None,
             "id": 1
             })
+        serialized_body = json.dumps({"keypair": fake_keypair})
+        if bytes_body:
+            serialized_body = serialized_body.encode('utf-8')
 
-        self.check_service_client_function(
-            self.client.show_keypair,
+        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.get',
-            fake_keypair,
-            bytes_body,
-            keypair_name="test")
+            return_value=mocked_resp))
+        resp = self.client.show_keypair("test")
+        self.assertEqual(fake_keypair, resp)
 
     def test_show_keypair_with_str_body(self):
         self._test_show_keypair()
@@ -73,14 +83,17 @@ class TestKeyPairsClient(base.BaseComputeServiceTest):
 
     def _test_create_keypair(self, bytes_body=False):
         fake_keypair = copy.deepcopy(self.FAKE_KEYPAIR)
-        fake_keypair["keypair"].update({"private_key": "foo"})
+        fake_keypair.update({"private_key": "foo"})
+        serialized_body = json.dumps({"keypair": fake_keypair})
+        if bytes_body:
+            serialized_body = serialized_body.encode('utf-8')
 
-        self.check_service_client_function(
-            self.client.create_keypair,
+        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.post',
-            fake_keypair,
-            bytes_body,
-            name="test")
+            return_value=mocked_resp))
+        resp = self.client.create_keypair(name='test')
+        self.assertEqual(fake_keypair, resp)
 
     def test_create_keypair_with_str_body(self):
         self._test_create_keypair()
@@ -89,7 +102,10 @@ class TestKeyPairsClient(base.BaseComputeServiceTest):
         self._test_create_keypair(bytes_body=True)
 
     def test_delete_keypair(self):
-        self.check_service_client_function(
-            self.client.delete_keypair,
+        expected = {}
+        mocked_resp = (httplib2.Response({'status': 202}), None)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.delete',
-            {}, status=202, keypair_name='test')
+            return_value=mocked_resp))
+        resp = self.client.delete_keypair('test')
+        self.assertEqual(expected, resp)

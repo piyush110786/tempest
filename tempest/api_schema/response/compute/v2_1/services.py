@@ -43,7 +43,7 @@ list_services = {
     }
 }
 
-enable_disable_service = {
+enable_service = {
     'status_code': [200],
     'response_body': {
         'type': 'object',

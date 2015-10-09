@@ -122,7 +122,7 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
         # Resize a non-existent server
         nonexistent_server = data_utils.rand_uuid()
         self.assertRaises(lib_exc.NotFound,
-                          self.client.resize_server,
+                          self.client.resize,
                           nonexistent_server, self.flavor_ref)
 
     @test.idempotent_id('ced1a1d7-2ab6-45c9-b90f-b27d87b30efd')
@@ -132,7 +132,7 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
     def test_resize_server_with_non_existent_flavor(self):
         # Resize a server with non-existent flavor
         nonexistent_flavor = data_utils.rand_uuid()
-        self.assertRaises(lib_exc.BadRequest, self.client.resize_server,
+        self.assertRaises(lib_exc.BadRequest, self.client.resize,
                           self.server_id, flavor_ref=nonexistent_flavor)
 
     @test.idempotent_id('45436a7d-a388-4a35-a9d8-3adc5d0d940b')
@@ -141,7 +141,7 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
     @test.attr(type=['negative'])
     def test_resize_server_with_null_flavor(self):
         # Resize a server with null flavor
-        self.assertRaises(lib_exc.BadRequest, self.client.resize_server,
+        self.assertRaises(lib_exc.BadRequest, self.client.resize,
                           self.server_id, flavor_ref="")
 
     @test.attr(type=['negative'])
@@ -149,7 +149,7 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
     def test_reboot_non_existent_server(self):
         # Reboot a non existent server
         nonexistent_server = data_utils.rand_uuid()
-        self.assertRaises(lib_exc.NotFound, self.client.reboot_server,
+        self.assertRaises(lib_exc.NotFound, self.client.reboot,
                           nonexistent_server, 'SOFT')
 
     @test.idempotent_id('d1417e7f-a509-41b5-a102-d5eed8613369')
@@ -172,12 +172,12 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
         server = self.create_test_server()
         waiters.wait_for_server_status(self.client, server['id'], "ACTIVE")
         self.client.delete_server(server['id'])
-        waiters.wait_for_server_termination(self.client, server['id'])
+        self.client.wait_for_server_termination(server['id'])
 
         self.assertRaises(lib_exc.NotFound,
-                          self.client.rebuild_server,
+                          self.client.rebuild,
                           server['id'], self.image_ref_alt)
-        self.assertRaises(lib_exc.NotFound, self.client.reboot_server,
+        self.assertRaises(lib_exc.NotFound, self.client.reboot,
                           server['id'], 'SOFT')
 
     @test.attr(type=['negative'])
@@ -186,7 +186,7 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
         # Rebuild a non existent server
         nonexistent_server = data_utils.rand_uuid()
         self.assertRaises(lib_exc.NotFound,
-                          self.client.rebuild_server,
+                          self.client.rebuild,
                           nonexistent_server,
                           self.image_ref_alt)
 
@@ -237,28 +237,29 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
         metadata = {'a': 'b' * 260}
         self.assertRaises((lib_exc.BadRequest, lib_exc.OverLimit),
                           self.create_test_server,
-                          metadata=metadata)
+                          meta=metadata)
 
     @test.attr(type=['negative'])
     @test.idempotent_id('aa8eed43-e2cb-4ebf-930b-da14f6a21d81')
     def test_update_name_of_non_existent_server(self):
         # Update name of a non-existent server
 
-        nonexistent_server = data_utils.rand_uuid()
+        server_name = data_utils.rand_name('server')
         new_name = data_utils.rand_name('server') + '_updated'
 
         self.assertRaises(lib_exc.NotFound, self.client.update_server,
-                          nonexistent_server, name=new_name)
+                          server_name, name=new_name)
 
     @test.attr(type=['negative'])
     @test.idempotent_id('38204696-17c6-44da-9590-40f87fb5a899')
     def test_update_server_set_empty_name(self):
         # Update name of the server to an empty string
 
+        server_name = data_utils.rand_name('server')
         new_name = ''
 
         self.assertRaises(lib_exc.BadRequest, self.client.update_server,
-                          self.server_id, name=new_name)
+                          server_name, name=new_name)
 
     @test.attr(type=['negative'])
     @test.idempotent_id('543d84c1-dd2e-4c6d-8cb2-b9da0efaa384')
@@ -336,7 +337,7 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
     def test_stop_non_existent_server(self):
         # Stop a non existent server
         nonexistent_server = data_utils.rand_uuid()
-        self.assertRaises(lib_exc.NotFound, self.servers_client.stop_server,
+        self.assertRaises(lib_exc.NotFound, self.servers_client.stop,
                           nonexistent_server)
 
     @test.idempotent_id('6a8dc0c6-6cd4-4c0a-9f32-413881828091')
@@ -477,12 +478,12 @@ class ServersNegativeTestJSON(base.BaseV2ComputeTest):
                                            self.server_id,
                                            'SHELVED')
 
-        # server = self.client.show_server(self.server_id)['server']
-        # image_name = server['name'] + '-shelved'
-        # params = {'name': image_name}
-        # images = self.images_client.list_images(**params)['images']
-        # self.assertEqual(1, len(images))
-        # self.assertEqual(image_name, images[0]['name'])
+        server = self.client.show_server(self.server_id)
+        #image_name = server['name'] + '-shelved'
+        #params = {'name': image_name}
+        #images = self.images_client.list_images(params)
+        #self.assertEqual(1, len(images))
+        #self.assertEqual(image_name, images[0]['name'])
 
         self.assertRaises(lib_exc.Conflict,
                           self.client.shelve_server,

@@ -12,13 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest_lib.tests import fake_auth_provider
+import httplib2
+
+from oslo_serialization import jsonutils as json
+from oslotest import mockpatch
 
 from tempest.services.compute.json import limits_client
-from tempest.tests.services.compute import base
+from tempest.tests import base
+from tempest.tests import fake_auth_provider
 
 
-class TestLimitsClient(base.BaseComputeServiceTest):
+class TestLimitsClient(base.TestCase):
 
     def setUp(self):
         super(TestLimitsClient, self).setUp()
@@ -27,38 +31,36 @@ class TestLimitsClient(base.BaseComputeServiceTest):
             fake_auth, 'compute', 'regionOne')
 
     def _test_show_limits(self, bytes_body=False):
-        expected = {
-            "limits": {
-                "rate": [],
-                "absolute": {
-                    "maxServerMeta": 128,
-                    "maxPersonality": 5,
-                    "totalServerGroupsUsed": 0,
-                    "maxImageMeta": 128,
-                    "maxPersonalitySize": 10240,
-                    "maxServerGroups": 10,
-                    "maxSecurityGroupRules": 20,
-                    "maxTotalKeypairs": 100,
-                    "totalCoresUsed": 0,
-                    "totalRAMUsed": 0,
-                    "totalInstancesUsed": 0,
-                    "maxSecurityGroups": 10,
-                    "totalFloatingIpsUsed": 0,
-                    "maxTotalCores": 20,
-                    "totalSecurityGroupsUsed": 0,
-                    "maxTotalFloatingIps": 10,
-                    "maxTotalInstances": 10,
-                    "maxTotalRAMSize": 51200,
-                    "maxServerGroupMembers": 10
-                    }
-            }
-        }
+        expected = {"rate": [],
+                    "absolute": {"maxServerMeta": 128,
+                                 "maxPersonality": 5,
+                                 "totalServerGroupsUsed": 0,
+                                 "maxImageMeta": 128,
+                                 "maxPersonalitySize": 10240,
+                                 "maxServerGroups": 10,
+                                 "maxSecurityGroupRules": 20,
+                                 "maxTotalKeypairs": 100,
+                                 "totalCoresUsed": 0,
+                                 "totalRAMUsed": 0,
+                                 "totalInstancesUsed": 0,
+                                 "maxSecurityGroups": 10,
+                                 "totalFloatingIpsUsed": 0,
+                                 "maxTotalCores": 20,
+                                 "totalSecurityGroupsUsed": 0,
+                                 "maxTotalFloatingIps": 10,
+                                 "maxTotalInstances": 10,
+                                 "maxTotalRAMSize": 51200,
+                                 "maxServerGroupMembers": 10}}
+        serialized_body = json.dumps({"limits": expected})
+        if bytes_body:
+            serialized_body = serialized_body.encode('utf-8')
 
-        self.check_service_client_function(
-            self.client.show_limits,
+        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.get',
-            expected,
-            bytes_body)
+            return_value=mocked_resp))
+        resp = self.client.show_limits()
+        self.assertEqual(expected, resp)
 
     def test_show_limits_with_str_body(self):
         self._test_show_limits()

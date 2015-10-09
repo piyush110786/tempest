@@ -36,7 +36,7 @@ class ConfiguredV2CredentialsTests(base.TestCase):
 
     identity_response = fake_identity._fake_v2_response
     credentials_class = auth.KeystoneV2Credentials
-    tokenclient_class = v2_client.TokenClient
+    tokenclient_class = v2_client.TokenClientJSON
     identity_version = 'v2'
 
     def setUp(self):
@@ -114,7 +114,7 @@ class ConfiguredV3CredentialsTests(ConfiguredV2CredentialsTests):
 
     credentials_class = auth.KeystoneV3Credentials
     identity_response = fake_identity._fake_v3_response
-    tokenclient_class = v3_client.V3TokenClient
+    tokenclient_class = v3_client.V3TokenClientJSON
     identity_version = 'v3'
 
     def setUp(self):
@@ -123,9 +123,5 @@ class ConfiguredV3CredentialsTests(ConfiguredV2CredentialsTests):
         cfg.CONF.set_default('auth_version', 'v3', group='identity')
         # Identity group items
         for prefix in ['', 'alt_', 'admin_']:
-            if prefix == 'admin_':
-                group = 'auth'
-            else:
-                group = 'identity'
             cfg.CONF.set_default(prefix + 'domain_name', 'fake_domain_name',
-                                 group=group)
+                                 group='identity')

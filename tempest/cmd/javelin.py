@@ -119,7 +119,6 @@ from tempest_lib import auth
 from tempest_lib import exceptions as lib_exc
 import yaml
 
-from tempest.common import waiters
 from tempest import config
 from tempest.services.compute.json import flavors_client
 from tempest.services.compute.json import floating_ips_client
@@ -274,11 +273,11 @@ def create_tenants(tenants):
     Don't create the tenants if they already exist.
     """
     admin = keystone_admin()
-    body = admin.identity.list_tenants()['tenants']
+    body = admin.identity.list_tenants()
     existing = [x['name'] for x in body]
     for tenant in tenants:
         if tenant not in existing:
-            admin.identity.create_tenant(tenant)['tenant']
+            admin.identity.create_tenant(tenant)
         else:
             LOG.warn("Tenant '%s' already exists in this environment" % tenant)
 
@@ -423,7 +422,7 @@ class JavelinCheck(unittest.TestCase):
         LOG.info("checking users")
         for name, user in six.iteritems(self.users):
             client = keystone_admin()
-            found = client.identity.get_user(user['id'])['user']
+            found = client.identity.get_user(user['id'])
             self.assertEqual(found['name'], user['name'])
             self.assertEqual(found['tenantId'], user['tenant_id'])
 
@@ -457,7 +456,7 @@ class JavelinCheck(unittest.TestCase):
                 found,
                 "Couldn't find expected server %s" % server['name'])
 
-            found = client.servers.show_server(found['id'])['server']
+            found = client.servers.show_server(found['id'])
             # validate neutron is enabled and ironic disabled:
             if (CONF.service_available.neutron and
                     not CONF.baremetal.driver_enabled):
@@ -840,7 +839,7 @@ def _get_server_by_name(client, name):
 
 
 def _get_flavor_by_name(client, name):
-    body = client.flavors.list_flavors()['flavors']
+    body = client.flavors.list_flavors()
     for flavor in body:
         if name == flavor['name']:
             return flavor
@@ -869,8 +868,7 @@ def create_servers(servers):
             kwargs['networks'] = [{'uuid': get_net_id(network)}
                                   for network in server['networks']]
         body = client.servers.create_server(
-            name=server['name'], imageRef=image_id, flavorRef=flavor_id,
-            **kwargs)['server']
+            server['name'], image_id, flavor_id, **kwargs)
         server_id = body['id']
         client.servers.wait_for_server_status(server_id, 'ACTIVE')
         # create security group(s) after server spawning
@@ -879,7 +877,7 @@ def create_servers(servers):
         if CONF.compute.use_floatingip_for_ssh:
             floating_ip_pool = server.get('floating_ip_pool')
             floating_ip = client.floating_ips.create_floating_ip(
-                pool_name=floating_ip_pool)['floating_ip']
+                pool_name=floating_ip_pool)
             client.floating_ips.associate_floating_ip_to_server(
                 floating_ip['ip'], server_id)
 
@@ -898,8 +896,8 @@ def destroy_servers(servers):
 
         # TODO(EmilienM): disassociate floating IP from server and release it.
         client.servers.delete_server(response['id'])
-        waiters.wait_for_server_termination(client.servers, response['id'],
-                                            ignore_error=True)
+        client.servers.wait_for_server_termination(response['id'],
+                                                   ignore_error=True)
 
 
 def create_secgroups(secgroups):
@@ -910,15 +908,14 @@ def create_secgroups(secgroups):
         # only create a security group if the name isn't here
         # i.e. a security group may be used by another server
         # only create a router if the name isn't here
-        body = client.secgroups.list_security_groups()['security_groups']
+        body = client.secgroups.list_security_groups()
         if any(item['name'] == secgroup['name'] for item in body):
             LOG.warning("Security group '%s' already exists" %
                         secgroup['name'])
             continue
 
         body = client.secgroups.create_security_group(
-            name=secgroup['name'],
-            description=secgroup['description'])['security_group']
+            name=secgroup['name'], description=secgroup['description'])
         secgroup_id = body['id']
         # for each security group, create the rules
         for rule in secgroup['rules']:
@@ -946,7 +943,7 @@ def destroy_secgroups(secgroups):
 #######################
 
 def _get_volume_by_name(client, name):
-    body = client.volumes.list_volumes()['volumes']
+    body = client.volumes.list_volumes()
     for volume in body:
         if name == volume['display_name']:
             return volume
@@ -968,7 +965,7 @@ def create_volumes(volumes):
         size = volume['gb']
         v_name = volume['name']
         body = client.volumes.create_volume(size=size,
-                                            display_name=v_name)['volume']
+                                            display_name=v_name)
         client.volumes.wait_for_volume_status(body['id'], 'available')
 
 

@@ -15,8 +15,6 @@ Tempest Specific Commandments
 - [T106] vim configuration should not be kept in source files.
 - [T107] Check that a service tag isn't in the module path
 - [T108] Check no hyphen at the end of rand_name() argument
-- [T109] Cannot use testtools.skip decorator; instead use
-         decorators.skip_because from tempest-lib
 - [N322] Method's default argument shouldn't be mutable
 
 Test Data/Configuration
@@ -74,10 +72,11 @@ for providing more information.
 Most other assert method can include more information by default.
 For example ``self.assertIn`` can include the whole set.
 
-It is recommended to use testtools `matcher`_ for the more tricky assertions.
-You can implement your own specific `matcher`_ as well.
+It is recommended to use testtools matcher for the more tricky assertions.
+`[doc] <http://testtools.readthedocs.org/en/latest/for-test-authors.html#matchers>`_
 
-.. _matcher: http://testtools.readthedocs.org/en/latest/for-test-authors.html#matchers
+You can implement your own specific matcher as well.
+`[doc] <http://testtools.readthedocs.org/en/latest/for-test-authors.html#writing-your-own-matchers>`_
 
 If the test case fails you can see the related logs and the information
 carried by the exception (exception class, backtrack and exception info).
@@ -159,8 +158,8 @@ is to create an interface description in a python file under
 sections for the test (one of those is mandatory):
 
  - A resource (part of the URL of the request): Resources needed for a test
-   must be created in `setUpClass` and registered with `set_resource` e.g.:
-   `cls.set_resource("server", server['id'])`
+ must be created in `setUpClass` and registered with `set_resource` e.g.:
+ `cls.set_resource("server", server['id'])`
 
  - A json schema: defines properties for a request.
 
@@ -320,7 +319,7 @@ Test Identification with Idempotent ID
 
 Every function that provides a test must have an ``idempotent_id`` decorator
 that is a unique ``uuid-4`` instance. This ID is used to complement the fully
-qualified test name and track test functionality through refactoring. The
+qualified test name and track test funcionality through refactoring. The
 format of the metadata looks like::
 
     @test.idempotent_id('585e934c-448e-43c4-acbf-d06a9b899997')

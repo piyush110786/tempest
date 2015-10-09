@@ -13,14 +13,17 @@
 #    under the License.
 
 import copy
+import httplib2
 
-from tempest_lib.tests import fake_auth_provider
+from oslo_serialization import jsonutils as json
+from oslotest import mockpatch
 
 from tempest.services.compute.json import quota_classes_client
-from tempest.tests.services.compute import base
+from tempest.tests import base
+from tempest.tests import fake_auth_provider
 
 
-class TestQuotaClassesClient(base.BaseComputeServiceTest):
+class TestQuotaClassesClient(base.TestCase):
 
     FAKE_QUOTA_CLASS_SET = {
         "injected_file_content_bytes": 10240,
@@ -47,13 +50,17 @@ class TestQuotaClassesClient(base.BaseComputeServiceTest):
             fake_auth, 'compute', 'regionOne')
 
     def _test_show_quota_class_set(self, bytes_body=False):
-        fake_body = {'quota_class_set': self.FAKE_QUOTA_CLASS_SET}
-        self.check_service_client_function(
-            self.client.show_quota_class_set,
+        serialized_body = json.dumps({
+            "quota_class_set": self.FAKE_QUOTA_CLASS_SET})
+        if bytes_body:
+            serialized_body = serialized_body.encode('utf-8')
+
+        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.get',
-            fake_body,
-            bytes_body,
-            quota_class_id="test")
+            return_value=mocked_resp))
+        resp = self.client.show_quota_class_set("test")
+        self.assertEqual(self.FAKE_QUOTA_CLASS_SET, resp)
 
     def test_show_quota_class_set_with_str_body(self):
         self._test_show_quota_class_set()
@@ -64,9 +71,11 @@ class TestQuotaClassesClient(base.BaseComputeServiceTest):
     def test_update_quota_class_set(self):
         fake_quota_class_set = copy.deepcopy(self.FAKE_QUOTA_CLASS_SET)
         fake_quota_class_set.pop("id")
-        fake_body = {'quota_class_set': fake_quota_class_set}
-        self.check_service_client_function(
-            self.client.update_quota_class_set,
+        serialized_body = json.dumps({"quota_class_set": fake_quota_class_set})
+
+        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
+        self.useFixture(mockpatch.Patch(
             'tempest.common.service_client.ServiceClient.put',
-            fake_body,
-            quota_class_id="test")
+            return_value=mocked_resp))
+        resp = self.client.update_quota_class_set("test")
+        self.assertEqual(fake_quota_class_set, resp)

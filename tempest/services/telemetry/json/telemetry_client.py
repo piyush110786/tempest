@@ -140,10 +140,3 @@ class TelemetryClient(service_client.ServiceClient):
         self.expected_success(200, resp.status)
         body = self.deserialize(body)
         return service_client.ResponseBodyData(resp, body)
-
-    def show_alarm_history(self, alarm_id):
-        uri = "%s/alarms/%s/history" % (self.uri_prefix, alarm_id)
-        resp, body = self.get(uri)
-        self.expected_success(200, resp.status)
-        body = self.deserialize(body)
-        return service_client.ResponseBodyList(resp, body)

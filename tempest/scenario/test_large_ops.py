@@ -87,8 +87,7 @@ class TestLargeOpsScenario(manager.ScenarioTest):
         # Since no traffic is tested, we don't need to actually add rules to
         # secgroup
         secgroup = self.security_groups_client.create_security_group(
-            name='secgroup-%s' % name,
-            description='secgroup-desc-%s' % name)['security_group']
+            name='secgroup-%s' % name, description='secgroup-desc-%s' % name)
         self.addCleanupClass(self.security_groups_client.delete_security_group,
                              secgroup['id'])
         create_kwargs = {
@@ -98,7 +97,7 @@ class TestLargeOpsScenario(manager.ScenarioTest):
         network = self.get_tenant_network()
         create_kwargs = fixed_network.set_networks_kwarg(network,
                                                          create_kwargs)
-        # self.servers_client.create_server(
+        #self.servers_client.create_server(
         self.create_server(
             name,
             '',
@@ -111,8 +110,8 @@ class TestLargeOpsScenario(manager.ScenarioTest):
         for server in self.servers:
             # after deleting all servers - wait for all servers to clear
             # before cleanup continues
-            self.addCleanupClass(waiters.wait_for_server_termination,
-                                 self.servers_client,
+            self.addCleanupClass(self.servers_client.
+                                 wait_for_server_termination,
                                  server['id'])
         for server in self.servers:
             self.addCleanupClass(self.servers_client.delete_server,

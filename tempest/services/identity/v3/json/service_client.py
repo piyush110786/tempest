@@ -23,7 +23,7 @@ class ServiceClient(service_client.ServiceClient):
 
     def update_service(self, service_id, **kwargs):
         """Updates a service."""
-        body = self.get_service(service_id)['service']
+        body = self.get_service(service_id)
         name = kwargs.get('name', body['name'])
         type = kwargs.get('type', body['type'])
         desc = kwargs.get('description', body['description'])
@@ -36,7 +36,7 @@ class ServiceClient(service_client.ServiceClient):
         resp, body = self.patch('services/%s' % service_id, patch_body)
         self.expected_success(200, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['service'])
 
     def get_service(self, service_id):
         """Get Service."""
@@ -44,7 +44,7 @@ class ServiceClient(service_client.ServiceClient):
         resp, body = self.get(url)
         self.expected_success(200, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['service'])
 
     def create_service(self, serv_type, name=None, description=None,
                        enabled=True):
@@ -58,7 +58,7 @@ class ServiceClient(service_client.ServiceClient):
         resp, body = self.post("services", body)
         self.expected_success(201, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body["service"])
 
     def delete_service(self, serv_id):
         url = "services/" + serv_id
@@ -70,4 +70,4 @@ class ServiceClient(service_client.ServiceClient):
         resp, body = self.get('services')
         self.expected_success(200, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, body['services'])

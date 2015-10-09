@@ -65,7 +65,6 @@ class NodeGroupTemplateTest(dp_base.BaseDataProcessingTest):
 
         # check for node group template in list
         templates = self.client.list_node_group_templates()
-        templates = templates['node_group_templates']
         templates_info = [(template['id'], template['name'])
                           for template in templates]
         self.assertIn(template_info, templates_info)
@@ -77,7 +76,6 @@ class NodeGroupTemplateTest(dp_base.BaseDataProcessingTest):
 
         # check node group template fetch by id
         template = self.client.get_node_group_template(template_id)
-        template = template['node_group_template']
         self.assertEqual(template_name, template['name'])
         self.assertDictContainsSubset(self.node_group_template, template)
 

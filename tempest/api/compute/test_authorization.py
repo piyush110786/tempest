@@ -64,19 +64,18 @@ class AuthorizationTestJSON(base.BaseV2ComputeTest):
     def resource_setup(cls):
         super(AuthorizationTestJSON, cls).resource_setup()
         server = cls.create_test_server(wait_until='ACTIVE')
-        cls.server = cls.client.show_server(server['id'])['server']
+        cls.server = cls.client.show_server(server['id'])
 
         name = data_utils.rand_name('image')
         body = cls.glance_client.create_image(name=name,
                                               container_format='bare',
                                               disk_format='raw',
-                                              is_public=False)['image']
+                                              is_public=False)
         image_id = body['id']
         image_file = six.StringIO(('*' * 1024))
-        body = cls.glance_client.update_image(image_id,
-                                              data=image_file)['image']
+        body = cls.glance_client.update_image(image_id, data=image_file)
         cls.glance_client.wait_for_image_status(image_id, 'active')
-        cls.image = cls.images_client.show_image(image_id)['image']
+        cls.image = cls.images_client.show_image(image_id)
 
         cls.keypairname = data_utils.rand_name('keypair')
         cls.keypairs_client.create_keypair(name=cls.keypairname)
@@ -84,7 +83,7 @@ class AuthorizationTestJSON(base.BaseV2ComputeTest):
         name = data_utils.rand_name('security')
         description = data_utils.rand_name('description')
         cls.security_group = cls.security_client.create_security_group(
-            name=name, description=description)['security_group']
+            name=name, description=description)
 
         parent_group_id = cls.security_group['id']
         ip_protocol = 'tcp'
@@ -92,7 +91,7 @@ class AuthorizationTestJSON(base.BaseV2ComputeTest):
         to_port = 22
         cls.rule = cls.rule_client.create_security_group_rule(
             parent_group_id=parent_group_id, ip_protocol=ip_protocol,
-            from_port=from_port, to_port=to_port)['security_group_rule']
+            from_port=from_port, to_port=to_port)
 
     @classmethod
     def resource_cleanup(cls):
@@ -155,19 +154,19 @@ class AuthorizationTestJSON(base.BaseV2ComputeTest):
     @test.idempotent_id('14cb5ff5-f646-45ca-8f51-09081d6c0c24')
     def test_reboot_server_for_alt_account_fails(self):
         # A reboot request for another user's server should fail
-        self.assertRaises(lib_exc.NotFound, self.alt_client.reboot_server,
+        self.assertRaises(lib_exc.NotFound, self.alt_client.reboot,
                           self.server['id'], 'HARD')
 
     @test.idempotent_id('8a0bce51-cd00-480b-88ba-dbc7d8408a37')
     def test_rebuild_server_for_alt_account_fails(self):
         # A rebuild request for another user's server should fail
-        self.assertRaises(lib_exc.NotFound, self.alt_client.rebuild_server,
+        self.assertRaises(lib_exc.NotFound, self.alt_client.rebuild,
                           self.server['id'], self.image_ref_alt)
 
     @test.idempotent_id('e4da647e-f982-4e61-9dad-1d1abebfb933')
     def test_resize_server_for_alt_account_fails(self):
         # A resize request for another user's server should fail
-        self.assertRaises(lib_exc.NotFound, self.alt_client.resize_server,
+        self.assertRaises(lib_exc.NotFound, self.alt_client.resize,
                           self.server['id'], self.flavor_ref_alt)
 
     @test.idempotent_id('a9fe8112-0ffa-4902-b061-f892bd5fe0d3')
@@ -181,8 +180,7 @@ class AuthorizationTestJSON(base.BaseV2ComputeTest):
     def test_create_server_with_unauthorized_image(self):
         # Server creation with another user's image should fail
         self.assertRaises(lib_exc.BadRequest, self.alt_client.create_server,
-                          name='test', imageRef=self.image['id'],
-                          flavorRef=self.flavor_ref)
+                          'test', self.image['id'], self.flavor_ref)
 
     @test.idempotent_id('acf8724b-142b-4044-82c3-78d31a533f24')
     def test_create_server_fails_when_tenant_incorrect(self):
@@ -194,8 +192,8 @@ class AuthorizationTestJSON(base.BaseV2ComputeTest):
             auth_data=self.client.auth_provider.auth_data
         )
         self.assertRaises(lib_exc.BadRequest,
-                          self.alt_client.create_server, name='test',
-                          imageRef=self.image['id'], flavorRef=self.flavor_ref)
+                          self.alt_client.create_server, 'test',
+                          self.image['id'], self.flavor_ref)
 
     @test.idempotent_id('f03d1ded-7fd4-4d29-bc13-e2391f29c625')
     def test_create_keypair_in_analt_user_tenant(self):

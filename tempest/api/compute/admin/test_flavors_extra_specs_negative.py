@@ -58,8 +58,7 @@ class FlavorsExtraSpecsNegativeTestJSON(base.BaseV2ComputeAdminTest):
                                               disk=disk,
                                               id=cls.new_flavor_id,
                                               ephemeral=ephemeral,
-                                              swap=swap,
-                                              rxtx_factor=rxtx)['flavor']
+                                              swap=swap, rxtx_factor=rxtx)
 
     @classmethod
     def resource_cleanup(cls):
@@ -81,7 +80,7 @@ class FlavorsExtraSpecsNegativeTestJSON(base.BaseV2ComputeAdminTest):
     def test_flavor_non_admin_update_specific_key(self):
         # non admin user is not allowed to update flavor extra spec
         body = self.client.set_flavor_extra_spec(
-            self.flavor['id'], key1="value1", key2="value2")['extra_specs']
+            self.flavor['id'], key1="value1", key2="value2")
         self.assertEqual(body['key1'], 'value1')
         self.assertRaises(lib_exc.Forbidden,
                           self.flavors_client.

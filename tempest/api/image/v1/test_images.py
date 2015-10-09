@@ -45,7 +45,7 @@ class CreateRegisterImagesTest(base.BaseV1ImageTest):
 
         # Now try uploading an image file
         image_file = moves.cStringIO(data_utils.random_bytes())
-        body = self.client.update_image(image_id, data=image_file)['image']
+        body = self.client.update_image(image_id, data=image_file)
         self.assertIn('size', body)
         self.assertEqual(1024, body.get('size'))
 
@@ -119,6 +119,9 @@ class ListImagesTest(base.BaseV1ImageTest):
         img7 = cls._create_standard_image('33', 'bare', 'raw', 142)
         img8 = cls._create_standard_image('33', 'bare', 'raw', 142)
         cls.created_set = set(cls.created_images)
+        # 4x-4x remote image
+        cls.remote_set = set((img1, img2, img3, img4))
+        cls.standard_set = set((img5, img6, img7, img8))
         # 5x bare, 3x ami
         cls.bare_set = set((img1, img3, img4, img7, img8))
         cls.ami_set = set((img2, img5, img6))
@@ -165,14 +168,14 @@ class ListImagesTest(base.BaseV1ImageTest):
     @test.idempotent_id('246178ab-3b33-4212-9a4b-a7fe8261794d')
     def test_index_no_params(self):
         # Simple test to see all fixture images returned
-        images_list = self.client.list_images()['images']
+        images_list = self.client.list_images()
         image_list = map(lambda x: x['id'], images_list)
         for image_id in self.created_images:
             self.assertIn(image_id, image_list)
 
     @test.idempotent_id('f1755589-63d6-4468-b098-589820eb4031')
     def test_index_disk_format(self):
-        images_list = self.client.list_images(disk_format='ami')['images']
+        images_list = self.client.list_images(disk_format='ami')
         for image in images_list:
             self.assertEqual(image['disk_format'], 'ami')
         result_set = set(map(lambda x: x['id'], images_list))
@@ -181,8 +184,7 @@ class ListImagesTest(base.BaseV1ImageTest):
 
     @test.idempotent_id('2143655d-96d9-4bec-9188-8674206b4b3b')
     def test_index_container_format(self):
-        images_list = (self.client.list_images(container_format='bare')
-                       ['images'])
+        images_list = self.client.list_images(container_format='bare')
         for image in images_list:
             self.assertEqual(image['container_format'], 'bare')
         result_set = set(map(lambda x: x['id'], images_list))
@@ -191,7 +193,7 @@ class ListImagesTest(base.BaseV1ImageTest):
 
     @test.idempotent_id('feb32ac6-22bb-4a16-afd8-9454bb714b14')
     def test_index_max_size(self):
-        images_list = self.client.list_images(size_max=42)['images']
+        images_list = self.client.list_images(size_max=42)
         for image in images_list:
             self.assertTrue(image['size'] <= 42)
         result_set = set(map(lambda x: x['id'], images_list))
@@ -200,7 +202,7 @@ class ListImagesTest(base.BaseV1ImageTest):
 
     @test.idempotent_id('6ffc16d0-4cbf-4401-95c8-4ac63eac34d8')
     def test_index_min_size(self):
-        images_list = self.client.list_images(size_min=142)['images']
+        images_list = self.client.list_images(size_min=142)
         for image in images_list:
             self.assertTrue(image['size'] >= 142)
         result_set = set(map(lambda x: x['id'], images_list))
@@ -212,7 +214,7 @@ class ListImagesTest(base.BaseV1ImageTest):
         images_list = self.client.list_images(detail=True,
                                               status='active',
                                               sort_key='size',
-                                              sort_dir='desc')['images']
+                                              sort_dir='desc')
         top_size = images_list[0]['size']  # We have non-zero sized images
         for image in images_list:
             size = image['size']
@@ -224,7 +226,7 @@ class ListImagesTest(base.BaseV1ImageTest):
     def test_index_name(self):
         images_list = self.client.list_images(
             detail=True,
-            name='New Remote Image dup')['images']
+            name='New Remote Image dup')
         result_set = set(map(lambda x: x['id'], images_list))
         for image in images_list:
             self.assertEqual(image['name'], 'New Remote Image dup')
@@ -270,7 +272,7 @@ class UpdateImageMetaTest(base.BaseV1ImageTest):
         self.assertEqual(metadata['properties'], {'key1': 'value1'})
         metadata['properties'].update(req_metadata)
         metadata = self.client.update_image(
-            self.image_id, properties=metadata['properties'])['image']
+            self.image_id, properties=metadata['properties'])
 
         resp_metadata = self.client.get_image_meta(self.image_id)
         expected = {'key1': 'alt1', 'key2': 'value2'}

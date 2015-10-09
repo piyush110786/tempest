@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_serialization import jsonutils as json
+import json
+
 from six.moves.urllib import parse as urllib
 
 from tempest.api_schema.response.compute.v2_1 import floating_ips as schema
@@ -23,7 +24,7 @@ from tempest.common import service_client
 class FloatingIPPoolsClient(service_client.ServiceClient):
 
     def list_floating_ip_pools(self, params=None):
-        """Gets all floating IP Pools list."""
+        """Returns a list of all floating IP Pools."""
         url = 'os-floating-ip-pools'
         if params:
             url += '?%s' % urllib.urlencode(params)
@@ -31,4 +32,4 @@ class FloatingIPPoolsClient(service_client.ServiceClient):
         resp, body = self.get(url)
         body = json.loads(body)
         self.validate_response(schema.list_floating_ip_pools, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, body['floating_ip_pools'])
