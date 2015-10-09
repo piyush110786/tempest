@@ -102,7 +102,7 @@ class Accounts(cred_provider.CredentialProvider):
                 if resource == 'network':
                     hash_dict['networks'][temp_hash_key] = resources[resource]
                 else:
-                    LOG.warning('Unkown resource type %s, ignoring this field'
+                    LOG.warning('Unknown resource type %s, ignoring this field'
                                 % resource)
         return hash_dict
 
@@ -284,7 +284,7 @@ class Accounts(cred_provider.CredentialProvider):
             identity_version=self.identity_version, **creds_dict)
         net_creds = cred_provider.TestResources(credential)
         net_clients = clients.Manager(credentials=credential)
-        compute_network_client = net_clients.networks_client
+        compute_network_client = net_clients.compute_networks_client
         net_name = self.hash_dict['networks'].get(hash, None)
         try:
             network = fixed_network.get_network_from_name(

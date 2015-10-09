@@ -6,7 +6,8 @@ Tempest Configuration Guide
 This guide is a starting point for configuring tempest. It aims to elaborate
 on and explain some of the mandatory and common configuration settings and how
 they are used in conjunction. The source of truth on each option is the sample
-config file which explains the purpose of each individual option.
+config file which explains the purpose of each individual option. You can see
+the sample config file here: :ref:`tempest-sampleconf`
 
 Lock Path
 ---------
@@ -24,7 +25,7 @@ Auth/Credentials
 Tempest currently has 2 different ways in configuration to provide credentials
 to use when running tempest. One is a traditional set of configuration options
 in the tempest.conf file. These options are in the identity section and let you
-specify a regular user, a global admin user, and a alternate user set of
+specify a regular user, a global admin user, and an alternate user set of
 credentials. (which consist of a username, password, and project/tenant name)
 These options should be clearly labelled in the sample config file in the
 identity section.
@@ -75,8 +76,9 @@ tenant/project names for a primary user, an admin user, and an alternate user.
 To enable and use tenant isolation you only need to configure 2 things:
 
  #. A set of admin credentials with permissions to create users and
-    tenants/projects. This is specified in the identity section with the
-    admin_username, admin_tenant_name, and admin_password options
+    tenants/projects. This is specified in the auth section with the
+    admin_username, admin_tenant_name, admin_domain_name, and admin_password
+    options
  #. To enable tenant_isolation in the auth section with the
     allow_tenant_isolation option.
 
@@ -125,6 +127,9 @@ unexpected failures in some tests.
 
 Non-locking test accounts (aka credentials config options)
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""
+**Starting in the Liberty release this mechanism was deprecated and will be
+removed in a future release**
+
 When Tempest was refactored to allow for locking test accounts, the original
 non-tenant isolated case was converted to internally work similarly to the
 accounts.yaml file. This mechanism was then called the non-locking test accounts
@@ -187,7 +192,7 @@ servers. There are 2 options in the compute section just like with flavors:
  #. image_ref_alt
 
 Both options are expecting an image id (not name) from nova. The *image_ref*
-option is what what will be used for booting the majority of servers in tempest.
+option is what will be used for booting the majority of servers in tempest.
 *image_ref_alt* is used for tests that require 2 images such as rebuild. If 2
 images are not available you can set both options to the same image_ref and
 those tests will be skipped.
