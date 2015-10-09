@@ -43,8 +43,6 @@ class BaseComputeTest(tempest.test.BaseTestCase):
     @classmethod
     def skip_checks(cls):
         super(BaseComputeTest, cls).skip_checks()
-        if not CONF.service_available.nova:
-            raise cls.skipException("Nova is not available")
         if cls._api_version != 2:
             msg = ("Unexpected API version is specified (%s)" %
                    cls._api_version)
@@ -69,11 +67,13 @@ class BaseComputeTest(tempest.test.BaseTestCase):
         cls.security_group_rules_client = cls.os.security_group_rules_client
         cls.security_groups_client = cls.os.security_groups_client
         cls.quotas_client = cls.os.quotas_client
+        # NOTE(mriedem): os-quota-class-sets is v2 API only
         cls.quota_classes_client = cls.os.quota_classes_client
-        cls.compute_networks_client = cls.os.compute_networks_client
+        # NOTE(mriedem): os-networks is v2 API only
+        cls.networks_client = cls.os.networks_client
         cls.limits_client = cls.os.limits_client
         cls.volumes_extensions_client = cls.os.volumes_extensions_client
-        cls.snapshots_extensions_client = cls.os.snapshots_extensions_client
+        cls.volumes_client = cls.os.volumes_client
         cls.interfaces_client = cls.os.interfaces_client
         cls.fixed_ips_client = cls.os.fixed_ips_client
         cls.availability_zone_client = cls.os.availability_zone_client
@@ -87,12 +87,6 @@ class BaseComputeTest(tempest.test.BaseTestCase):
         cls.migrations_client = cls.os.migrations_client
         cls.security_group_default_rules_client = (
             cls.os.security_group_default_rules_client)
-        cls.versions_client = cls.os.compute_versions_client
-
-        if CONF.volume_feature_enabled.api_v1:
-            cls.volumes_client = cls.os.volumes_client
-        else:
-            cls.volumes_client = cls.os.volumes_v2_client
 
     @classmethod
     def resource_setup(cls):
@@ -110,11 +104,13 @@ class BaseComputeTest(tempest.test.BaseTestCase):
         cls.images = []
         cls.security_groups = []
         cls.server_groups = []
+        cls.floating_ips = []
 
     @classmethod
     def resource_cleanup(cls):
         cls.clear_images()
         cls.clear_servers()
+        cls.clear_floating_ips()
         cls.clear_security_groups()
         cls.clear_server_groups()
         super(BaseComputeTest, cls).resource_cleanup()
@@ -135,8 +131,7 @@ class BaseComputeTest(tempest.test.BaseTestCase):
 
         for server in cls.servers:
             try:
-                waiters.wait_for_server_termination(cls.servers_client,
-                                                    server['id'])
+                cls.servers_client.wait_for_server_termination(server['id'])
             except Exception:
                 LOG.exception('Waiting for deletion of server %s failed'
                               % server['id'])
@@ -157,8 +152,7 @@ class BaseComputeTest(tempest.test.BaseTestCase):
             except Exception as exc:
                 LOG.exception(exc)
                 cls.servers_client.delete_server(cls.server_id)
-                waiters.wait_for_server_termination(cls.servers_client,
-                                                    cls.server_id)
+                cls.servers_client.wait_for_server_termination(cls.server_id)
                 cls.server_id = None
                 raise
 
@@ -203,17 +197,26 @@ class BaseComputeTest(tempest.test.BaseTestCase):
                               server_group_id)
 
     @classmethod
-    def create_test_server(cls, validatable=False, volume_backed=False,
-                           **kwargs):
+    def clear_floating_ips(cls):
+        for ips in cls.floating_ips:
+            cls.floating_ips_client.delete_floating_ip(ips)
+
+    @classmethod
+    def create_assign_floating_ip(cls, server_id):
+        floating_ip = cls.floating_ips_client.create_floating_ip()
+        cls.floating_ips.append(floating_ip['id'])
+        cls.floating_ips_client.associate_floating_ip_to_server(
+            floating_ip['ip'], server_id)
+        return floating_ip['ip']
+
+    @classmethod
+    def create_test_server(cls, validatable=False, **kwargs):
         """Wrapper utility that returns a test server.
 
         This wrapper utility calls the common create test server and
         returns a test server. The purpose of this wrapper is to minimize
         the impact on the code of the tests already using this
         function.
-
-        :param validatable: Whether the server will be pingable or sshable.
-        :param volume_backed: Whether the instance is volume backed or not.
         """
         tenant_network = cls.get_tenant_network()
         body, servers = compute.create_test_server(
@@ -221,7 +224,6 @@ class BaseComputeTest(tempest.test.BaseTestCase):
             validatable,
             validation_resources=cls.validation_resources,
             tenant_network=tenant_network,
-            volume_backed=volume_backed,
             **kwargs)
 
         cls.servers.extend(servers)
@@ -234,8 +236,9 @@ class BaseComputeTest(tempest.test.BaseTestCase):
             name = data_utils.rand_name(cls.__name__ + "-securitygroup")
         if description is None:
             description = data_utils.rand_name('description')
-        body = cls.security_groups_client.create_security_group(
-            name=name, description=description)['security_group']
+        body = \
+            cls.security_groups_client.create_security_group(
+                name=name, description=description)
         cls.security_groups.append(body)
 
         return body
@@ -246,8 +249,7 @@ class BaseComputeTest(tempest.test.BaseTestCase):
             name = data_utils.rand_name(cls.__name__ + "-Server-Group")
         if policy is None:
             policy = ['affinity']
-        body = cls.server_groups_client.create_server_group(
-            name=name, policies=policy)['server_group']
+        body = cls.server_groups_client.create_server_group(name, policy)
         cls.server_groups.append(body['id'])
         return body
 
@@ -299,7 +301,7 @@ class BaseComputeTest(tempest.test.BaseTestCase):
         if 'wait_until' in kwargs:
             waiters.wait_for_image_status(cls.images_client,
                                           image_id, kwargs['wait_until'])
-            image = cls.images_client.show_image(image_id)['image']
+            image = cls.images_client.show_image(image_id)
 
             if kwargs['wait_until'] == 'ACTIVE':
                 if kwargs.get('wait_for_server', True):
@@ -313,8 +315,7 @@ class BaseComputeTest(tempest.test.BaseTestCase):
         if server_id:
             try:
                 cls.servers_client.delete_server(server_id)
-                waiters.wait_for_server_termination(cls.servers_client,
-                                                    server_id)
+                cls.servers_client.wait_for_server_termination(server_id)
             except Exception:
                 LOG.exception('Failed to delete server %s' % server_id)
 
@@ -330,8 +331,7 @@ class BaseComputeTest(tempest.test.BaseTestCase):
         """Deletes an existing server and waits for it to be gone."""
         try:
             cls.servers_client.delete_server(server_id)
-            waiters.wait_for_server_termination(cls.servers_client,
-                                                server_id)
+            cls.servers_client.wait_for_server_termination(server_id)
         except Exception:
             LOG.exception('Failed to delete server %s' % server_id)
 

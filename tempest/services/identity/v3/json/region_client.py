@@ -37,7 +37,7 @@ class RegionClient(service_client.ServiceClient):
             resp, body = self.post('regions', req_body)
         self.expected_success(201, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['region'])
 
     def update_region(self, region_id, **kwargs):
         """Updates a region."""
@@ -50,7 +50,7 @@ class RegionClient(service_client.ServiceClient):
         resp, body = self.patch('regions/%s' % region_id, post_body)
         self.expected_success(200, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['region'])
 
     def get_region(self, region_id):
         """Get region."""
@@ -58,7 +58,7 @@ class RegionClient(service_client.ServiceClient):
         resp, body = self.get(url)
         self.expected_success(200, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['region'])
 
     def list_regions(self, params=None):
         """List regions."""
@@ -68,7 +68,7 @@ class RegionClient(service_client.ServiceClient):
         resp, body = self.get(url)
         self.expected_success(200, resp.status)
         body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, body['regions'])
 
     def delete_region(self, region_id):
         """Delete region."""

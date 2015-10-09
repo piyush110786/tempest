@@ -58,12 +58,12 @@ class TestServerAdvancedOps(manager.ScenarioTest):
         resize_flavor = CONF.compute.flavor_ref_alt
         LOG.debug("Resizing instance %s from flavor %s to flavor %s",
                   instance['id'], instance['flavor']['id'], resize_flavor)
-        self.servers_client.resize_server(instance_id, resize_flavor)
+        self.servers_client.resize(instance_id, resize_flavor)
         waiters.wait_for_server_status(self.servers_client, instance_id,
                                        'VERIFY_RESIZE')
 
         LOG.debug("Confirming resize of instance %s", instance_id)
-        self.servers_client.confirm_resize_server(instance_id)
+        self.servers_client.confirm_resize(instance_id)
 
         waiters.wait_for_server_status(self.servers_client, instance_id,
                                        'ACTIVE')
@@ -81,22 +81,19 @@ class TestServerAdvancedOps(manager.ScenarioTest):
         self.servers_client.suspend_server(instance_id)
         waiters.wait_for_server_status(self.servers_client, instance_id,
                                        'SUSPENDED')
-        fetched_instance = (self.servers_client.show_server(instance_id)
-                            ['server'])
+        fetched_instance = self.servers_client.show_server(instance_id)
         LOG.debug("Resuming instance %s. Current status: %s",
                   instance_id, fetched_instance['status'])
         self.servers_client.resume_server(instance_id)
         waiters.wait_for_server_status(self.servers_client, instance_id,
                                        'ACTIVE')
-        fetched_instance = (self.servers_client.show_server(instance_id)
-                            ['server'])
+        fetched_instance = self.servers_client.show_server(instance_id)
         LOG.debug("Suspending instance %s. Current status: %s",
                   instance_id, fetched_instance['status'])
         self.servers_client.suspend_server(instance_id)
         waiters.wait_for_server_status(self.servers_client, instance_id,
                                        'SUSPENDED')
-        fetched_instance = (self.servers_client.show_server(instance_id)
-                            ['server'])
+        fetched_instance = self.servers_client.show_server(instance_id)
         LOG.debug("Resuming instance %s. Current status: %s",
                   instance_id, fetched_instance['status'])
         self.servers_client.resume_server(instance_id)

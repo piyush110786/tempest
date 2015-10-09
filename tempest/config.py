@@ -77,31 +77,11 @@ AuthGroup = [
     cfg.BoolOpt('create_isolated_networks',
                 default=True,
                 help="If allow_tenant_isolation is set to True and Neutron is "
-                     "enabled Tempest will try to create a usable network, "
+                     "enabled Tempest will try to create a useable network, "
                      "subnet, and router when needed for each tenant it  "
                      "creates. However in some neutron configurations, like "
                      "with VLAN provider networks, this doesn't work. So if "
                      "set to False the isolated networks will not be created"),
-    cfg.StrOpt('admin_username',
-               help="Username for an administrative user. This is needed for "
-                    "authenticating requests made by tenant isolation to "
-                    "create users and projects",
-               deprecated_group='identity'),
-    cfg.StrOpt('admin_tenant_name',
-               help="Tenant name to use for an  administrative user. This is "
-                    "needed for authenticating requests made by tenant "
-                    "isolation to create users and projects",
-               deprecated_group='identity'),
-    cfg.StrOpt('admin_password',
-               help="Password to use for an  administrative user. This is "
-                    "needed for authenticating requests made by tenant "
-                    "isolation to create users and projects",
-               secret=True,
-               deprecated_group='identity'),
-    cfg.StrOpt('admin_domain_name',
-               help="Admin domain name for authentication (Keystone V3)."
-                    "The same domain applies to user and project",
-               deprecated_group='identity'),
 ]
 
 identity_group = cfg.OptGroup(name='identity',
@@ -137,7 +117,9 @@ IdentityGroup = [
                choices=['public', 'admin', 'internal',
                         'publicURL', 'adminURL', 'internalURL'],
                help="The admin endpoint type to use for OpenStack Identity "
-                    "(Keystone) API v2"),
+                    "(Keystone) API v2",
+               deprecated_opts=[cfg.DeprecatedOpt('endpoint_type',
+                                                  group='identity')]),
     cfg.StrOpt('v2_public_endpoint_type',
                default='publicURL',
                choices=['public', 'admin', 'internal',
@@ -151,40 +133,46 @@ IdentityGroup = [
                choices=['public', 'admin', 'internal',
                         'publicURL', 'adminURL', 'internalURL'],
                help="The endpoint type to use for OpenStack Identity "
-                    "(Keystone) API v3"),
+                    "(Keystone) API v3",
+               deprecated_opts=[cfg.DeprecatedOpt('endpoint_type',
+                                                  group='identity')]),
     cfg.StrOpt('username',
-               help="Username to use for Nova API requests.",
-               deprecated_for_removal=True),
+               help="Username to use for Nova API requests."),
     cfg.StrOpt('tenant_name',
-               help="Tenant name to use for Nova API requests.",
-               deprecated_for_removal=True),
+               help="Tenant name to use for Nova API requests."),
     cfg.StrOpt('admin_role',
                default='admin',
                help="Role required to administrate keystone."),
     cfg.StrOpt('password',
                help="API key to use when authenticating.",
-               secret=True,
-               deprecated_for_removal=True),
+               secret=True),
     cfg.StrOpt('domain_name',
                help="Domain name for authentication (Keystone V3)."
-                    "The same domain applies to user and project",
-               deprecated_for_removal=True),
+                    "The same domain applies to user and project"),
     cfg.StrOpt('alt_username',
                help="Username of alternate user to use for Nova API "
-                    "requests.",
-               deprecated_for_removal=True),
+                    "requests."),
     cfg.StrOpt('alt_tenant_name',
                help="Alternate user's Tenant name to use for Nova API "
-                    "requests.",
-               deprecated_for_removal=True),
+                    "requests."),
     cfg.StrOpt('alt_password',
                help="API key to use when authenticating as alternate user.",
-               secret=True,
-               deprecated_for_removal=True),
+               secret=True),
     cfg.StrOpt('alt_domain_name',
                help="Alternate domain name for authentication (Keystone V3)."
-                    "The same domain applies to user and project",
-               deprecated_for_removal=True),
+                    "The same domain applies to user and project"),
+    cfg.StrOpt('admin_username',
+               help="Administrative Username to use for "
+                    "Keystone API requests."),
+    cfg.StrOpt('admin_tenant_name',
+               help="Administrative Tenant name to use for Keystone API "
+                    "requests."),
+    cfg.StrOpt('admin_password',
+               help="API key to use when authenticating as admin.",
+               secret=True),
+    cfg.StrOpt('admin_domain_name',
+               help="Admin domain name for authentication (Keystone V3)."
+                    "The same domain applies to user and project"),
     cfg.StrOpt('default_domain_id',
                default='default',
                help="ID of the default domain"),
@@ -204,12 +192,6 @@ IdentityFeatureGroup = [
     cfg.BoolOpt('api_v3',
                 default=True,
                 help='Is the v3 identity API enabled'),
-    cfg.ListOpt('api_extensions',
-                default=['all'],
-                help="A list of enabled identity extensions with a special "
-                     "entry all which indicates every extension is enabled. "
-                     "Empty list indicates all extensions are disabled. "
-                     "To get the list of extensions run: 'keystone discover'")
 ]
 
 compute_group = cfg.OptGroup(name='compute',
@@ -459,9 +441,6 @@ ComputeFeaturesGroup = [
                 help='Does the test environment support creating instances '
                      'with multiple ports on the same network? This is only '
                      'valid when using Neutron.'),
-    cfg.BoolOpt('config_drive',
-                default=True,
-                help='Enable special configuration drive with metadata.'),
 ]
 
 
@@ -579,10 +558,6 @@ NetworkGroup = [
                     " with pre-configured ports."
                     " Supported ports are:"
                     " ['normal','direct','macvtap']"),
-    cfg.ListOpt('default_network',
-                default=["1.0.0.0/16", "2.0.0.0/16"],
-                help="List of ip pools"
-                     " for subnetpools creation"),
 ]
 
 network_feature_group = cfg.OptGroup(name='network-feature-enabled',
@@ -655,12 +630,6 @@ ValidationGroup = [
                      ' validation resources to enable remote access',
                 deprecated_opts=[cfg.DeprecatedOpt('run_ssh',
                                                    group='compute')]),
-    cfg.BoolOpt('security_group',
-                default=True,
-                help='Enable/disable security groups.'),
-    cfg.BoolOpt('security_group_rules',
-                default=True,
-                help='Enable/disable security group rules.'),
     cfg.StrOpt('connect_method',
                default='floating',
                choices=['fixed', 'floating'],
@@ -752,9 +721,6 @@ VolumeFeaturesGroup = [
     cfg.BoolOpt('snapshot',
                 default=True,
                 help='Runs Cinder volume snapshot test'),
-    cfg.BoolOpt('clone',
-                default=True,
-                help='Runs Cinder volume clone test'),
     cfg.ListOpt('api_extensions',
                 default=['all'],
                 help='A list of enabled volume extensions with a special '
@@ -910,7 +876,6 @@ TelemetryGroup = [
                help="The endpoint type to use for the telemetry service."),
     cfg.BoolOpt('too_slow_to_test',
                 default=True,
-                deprecated_for_removal=True,
                 help="This variable is used as flag to enable "
                      "notification tests")
 ]
@@ -935,8 +900,7 @@ DashboardGroup = [
                help="Where the dashboard can be found"),
     cfg.StrOpt('login_url',
                default='http://localhost/auth/login/',
-               help="Login page for the dashboard",
-               deprecated_for_removal=True),
+               help="Login page for the dashboard"),
 ]
 
 
@@ -1090,7 +1054,7 @@ ScenarioGroup = [
     # TODO(yfried): add support for dhcpcd
     cfg.StrOpt('dhcp_client',
                default='udhcpc',
-               choices=["udhcpc", "dhclient", ""],
+               choices=["udhcpc", "dhclient"],
                help='DHCP client used by images to renew DCHP lease. '
                     'If left empty, update operation will be skipped. '
                     'Supported clients: "udhcpc", "dhclient"')
@@ -1191,7 +1155,7 @@ baremetal_group = cfg.OptGroup(name='baremetal',
                                title='Baremetal provisioning service options',
                                help='When enabling baremetal tests, Nova '
                                     'must be configured to use the Ironic '
-                                    'driver. The following parameters for the '
+                                    'driver. The following paremeters for the '
                                     '[compute] section must be disabled: '
                                     'console_output, interface_attach, '
                                     'live_migration, pause, rescue, resize '

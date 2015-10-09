@@ -16,29 +16,18 @@ from tempest.api.compute import base
 from tempest import test
 
 
-class ComputeTenantNetworksTest(base.BaseV2ComputeTest):
+class NetworksTestJSON(base.BaseV2ComputeTest):
 
     @classmethod
     def resource_setup(cls):
-        super(ComputeTenantNetworksTest, cls).resource_setup()
+        super(NetworksTestJSON, cls).resource_setup()
         cls.client = cls.os.tenant_networks_client
-        cls.network = cls.get_tenant_network()
-
-    @classmethod
-    def setup_credentials(cls):
-        cls.set_network_resources(network=True)
-        super(ComputeTenantNetworksTest, cls).setup_credentials()
 
     @test.idempotent_id('edfea98e-bbe3-4c7a-9739-87b986baff26')
-    @test.services('network')
     def test_list_show_tenant_networks(self):
-        # Fetch all networks that are visible to the tenant: this may include
-        # shared and external networks
-        tenant_networks = [
-            n['id'] for n in self.client.list_tenant_networks()['networks']
-        ]
-        self.assertIn(self.network['id'], tenant_networks,
-                      "No tenant networks found.")
+        tenant_networks = self.client.list_tenant_networks()
+        self.assertNotEmpty(tenant_networks, "No tenant networks found.")
 
-        net = self.client.show_tenant_network(self.network['id'])
-        self.assertEqual(self.network['id'], net['network']['id'])
+        for net in tenant_networks:
+            tenant_network = self.client.show_tenant_network(net['id'])
+            self.assertEqual(net['id'], tenant_network['id'])

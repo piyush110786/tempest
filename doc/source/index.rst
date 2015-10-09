@@ -24,6 +24,7 @@ where your test contributions should go.
 
    field_guide/index
    field_guide/api
+   field_guide/cli
    field_guide/scenario
    field_guide/stress
    field_guide/thirdparty

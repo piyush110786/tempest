@@ -66,7 +66,7 @@ class ServersAdminTestJSON(base.BaseV2ComputeAdminTest):
         # Reset server's state to 'active'
         self.client.reset_state(self.s1_id, state='active')
         # Verify server's state
-        server = self.client.show_server(self.s1_id)['server']
+        server = self.client.show_server(self.s1_id)
         self.assertEqual(server['status'], 'ACTIVE')
         servers = body['servers']
         # Verify error server in list result
@@ -111,13 +111,12 @@ class ServersAdminTestJSON(base.BaseV2ComputeAdminTest):
         image_id = self.image_ref
         network = self.get_tenant_network()
         network_kwargs = fixed_network.set_networks_kwarg(network)
-        test_server = self.client.create_server(name=name, imageRef=image_id,
-                                                flavorRef=flavor,
-                                                **network_kwargs)['server']
+        test_server = self.client.create_server(name, image_id, flavor,
+                                                **network_kwargs)
         self.addCleanup(self.client.delete_server, test_server['id'])
         waiters.wait_for_server_status(self.client,
                                        test_server['id'], 'ACTIVE')
-        server = self.client.show_server(test_server['id'])['server']
+        server = self.client.show_server(test_server['id'])
         self.assertEqual(server['status'], 'ACTIVE')
         hostname = server[self._host_key]
         params = {'host': hostname}
@@ -136,14 +135,14 @@ class ServersAdminTestJSON(base.BaseV2ComputeAdminTest):
         self.client.reset_state(self.s1_id)
 
         # Verify server's state
-        server = self.client.show_server(self.s1_id)['server']
+        server = self.client.show_server(self.s1_id)
         self.assertEqual(server['status'], 'ERROR')
 
         # Reset server's state to 'active'
         self.client.reset_state(self.s1_id, state='active')
 
         # Verify server's state
-        server = self.client.show_server(self.s1_id)['server']
+        server = self.client.show_server(self.s1_id)
         self.assertEqual(server['status'], 'ACTIVE')
 
     @decorators.skip_because(bug="1240043")
@@ -164,11 +163,11 @@ class ServersAdminTestJSON(base.BaseV2ComputeAdminTest):
 
         # resetting vm state require admin privilege
         self.client.reset_state(self.s1_id, state='error')
-        rebuilt_server = self.non_admin_client.rebuild_server(
-            self.s1_id, self.image_ref_alt)['server']
+        rebuilt_server = self.non_admin_client.rebuild(
+            self.s1_id, self.image_ref_alt)
         self.addCleanup(waiters.wait_for_server_status, self.non_admin_client,
                         self.s1_id, 'ACTIVE')
-        self.addCleanup(self.non_admin_client.rebuild_server, self.s1_id,
+        self.addCleanup(self.non_admin_client.rebuild, self.s1_id,
                         self.image_ref)
 
         # Verify the properties in the initial response are correct
@@ -180,8 +179,7 @@ class ServersAdminTestJSON(base.BaseV2ComputeAdminTest):
                                        rebuilt_server['id'], 'ACTIVE',
                                        raise_on_error=False)
         # Verify the server properties after rebuilding
-        server = (self.non_admin_client.show_server(rebuilt_server['id'])
-                  ['server'])
+        server = self.non_admin_client.show_server(rebuilt_server['id'])
         rebuilt_image_id = server['image']['id']
         self.assertEqual(self.image_ref_alt, rebuilt_image_id)
 
@@ -199,5 +197,5 @@ class ServersAdminTestJSON(base.BaseV2ComputeAdminTest):
         hints = {
             'same_host': self.s1_id
         }
-        self.create_test_server(scheduler_hints=hints,
+        self.create_test_server(sched_hints=hints,
                                 wait_until='ACTIVE')

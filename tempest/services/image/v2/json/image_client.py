@@ -71,8 +71,7 @@ class ImageClientV2(service_client.ServiceClient):
                                    "-json-patch"}
         resp, body = self.patch('v2/images/%s' % image_id, data, headers)
         self.expected_success(200, resp.status)
-        body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, self._parse_resp(body))
 
     def create_image(self, name, container_format, disk_format, **kwargs):
         params = {
@@ -124,7 +123,7 @@ class ImageClientV2(service_client.ServiceClient):
         self.expected_success(200, resp.status)
         body = json.loads(body)
         self._validate_schema(body, type='images')
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, body['images'])
 
     def show_image(self, image_id):
         url = 'v2/images/%s' % image_id
@@ -213,63 +212,3 @@ class ImageClientV2(service_client.ServiceClient):
         self.expected_success(200, resp.status)
         body = json.loads(body)
         return service_client.ResponseBody(resp, body)
-
-    def list_resource_types(self):
-        url = '/v2/metadefs/resource_types'
-        resp, body = self.get(url)
-        self.expected_success(200, resp.status)
-        body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
-
-    def create_namespaces(self, namespace, **kwargs):
-        params = {
-            "namespace": namespace,
-        }
-
-        for option in kwargs:
-            value = kwargs.get(option)
-            if isinstance(value, dict) or isinstance(value, tuple):
-                params.update(value)
-            else:
-                params[option] = value
-
-        data = json.dumps(params)
-        self._validate_schema(data)
-
-        resp, body = self.post('/v2/metadefs/namespaces', data)
-        self.expected_success(201, resp.status)
-        body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
-
-    def show_namespaces(self, namespace):
-        url = '/v2/metadefs/namespaces/%s' % namespace
-        resp, body = self.get(url)
-        self.expected_success(200, resp.status)
-        body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
-
-    def update_namespaces(self, namespace, visibility, **kwargs):
-        params = {
-            "namespace": namespace,
-            "visibility": visibility
-        }
-        for option in kwargs:
-            value = kwargs.get(option)
-            if isinstance(value, dict) or isinstance(value, tuple):
-                params.update(value)
-            else:
-                params[option] = value
-
-        data = json.dumps(params)
-        self._validate_schema(data)
-        url = '/v2/metadefs/namespaces/%s' % namespace
-        resp, body = self.put(url, body=data)
-        self.expected_success(200, resp.status)
-        body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
-
-    def delete_namespaces(self, namespace):
-        url = '/v2/metadefs/namespaces/%s' % namespace
-        resp, _ = self.delete(url)
-        self.expected_success(204, resp.status)
-        return service_client.ResponseBody(resp)

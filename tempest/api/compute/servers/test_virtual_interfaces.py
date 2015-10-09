@@ -57,5 +57,4 @@ class VirtualInterfacesTestJSON(base.BaseV2ComputeTest):
         for virt_iface in virt_ifaces['virtual_interfaces']:
             mac_address = virt_iface['mac_address']
             self.assertTrue(netaddr.valid_mac(mac_address),
-                            "Invalid mac address detected. mac address: %s"
-                            % mac_address)
+                            "Invalid mac address detected.")

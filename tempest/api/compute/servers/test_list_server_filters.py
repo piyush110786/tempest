@@ -44,7 +44,7 @@ class ListServerFiltersTestJSON(base.BaseV2ComputeTest):
 
         # Check to see if the alternate image ref actually exists...
         images_client = cls.images_client
-        images = images_client.list_images()['images']
+        images = images_client.list_images()
 
         if cls.image_ref != cls.image_ref_alt and \
             any([image for image in images
@@ -137,11 +137,11 @@ class ListServerFiltersTestJSON(base.BaseV2ComputeTest):
     def test_list_servers_filter_by_shutoff_status(self):
         # Filter the list of servers by server shutoff status
         params = {'status': 'shutoff'}
-        self.client.stop_server(self.s1['id'])
+        self.client.stop(self.s1['id'])
         waiters.wait_for_server_status(self.client, self.s1['id'],
                                        'SHUTOFF')
         body = self.client.list_servers(**params)
-        self.client.start_server(self.s1['id'])
+        self.client.start(self.s1['id'])
         waiters.wait_for_server_status(self.client, self.s1['id'],
                                        'ACTIVE')
         servers = body['servers']
@@ -274,7 +274,7 @@ class ListServerFiltersTestJSON(base.BaseV2ComputeTest):
         if not self.fixed_network_name:
             msg = 'fixed_network_name needs to be configured to run this test'
             raise self.skipException(msg)
-        self.s1 = self.client.show_server(self.s1['id'])['server']
+        self.s1 = self.client.show_server(self.s1['id'])
         for addr_spec in self.s1['addresses'][self.fixed_network_name]:
             ip = addr_spec['addr']
             if addr_spec['version'] == 4:
@@ -298,7 +298,7 @@ class ListServerFiltersTestJSON(base.BaseV2ComputeTest):
         if not self.fixed_network_name:
             msg = 'fixed_network_name needs to be configured to run this test'
             raise self.skipException(msg)
-        self.s1 = self.client.show_server(self.s1['id'])['server']
+        self.s1 = self.client.show_server(self.s1['id'])
         addr_spec = self.s1['addresses'][self.fixed_network_name][0]
         ip = addr_spec['addr'][0:-3]
         if addr_spec['version'] == 4:

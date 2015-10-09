@@ -28,7 +28,7 @@ from tempest import test
 CONF = config.CONF
 
 
-class NetworksTest(base.BaseNetworkTest):
+class NetworksTestJSON(base.BaseNetworkTest):
     """
     Tests the following operations in the Neutron API using the REST client for
     Neutron:
@@ -62,11 +62,12 @@ class NetworksTest(base.BaseNetworkTest):
 
     @classmethod
     def resource_setup(cls):
-        super(NetworksTest, cls).resource_setup()
+        super(NetworksTestJSON, cls).resource_setup()
         cls.network = cls.create_network()
         cls.name = cls.network['name']
         cls.subnet = cls._create_subnet_with_last_subnet_block(cls.network,
                                                                cls._ip_version)
+        cls.cidr = cls.subnet['cidr']
         cls._subnet_data = {6: {'gateway':
                                 str(cls._get_gateway_from_tempest_conf(6)),
                                 'allocation_pools':
@@ -147,7 +148,7 @@ class NetworksTest(base.BaseNetworkTest):
 
     def _delete_network(self, network):
         # Deleting network also deletes its subnets if exists
-        self.networks_client.delete_network(network['id'])
+        self.client.delete_network(network['id'])
         if network in self.networks:
             self.networks.remove(network)
         for subnet in self.subnets:
@@ -172,7 +173,7 @@ class NetworksTest(base.BaseNetworkTest):
             del subnet['dns_nameservers'], compare_args['dns_nameservers']
 
         self._compare_resource_attrs(subnet, compare_args)
-        self.networks_client.delete_network(net_id)
+        self.client.delete_network(net_id)
         self.networks.pop()
         self.subnets.pop()
 
@@ -187,7 +188,7 @@ class NetworksTest(base.BaseNetworkTest):
         self.assertEqual('ACTIVE', network['status'])
         # Verify network update
         new_name = "New_network"
-        body = self.networks_client.update_network(net_id, name=new_name)
+        body = self.client.update_network(net_id, name=new_name)
         updated_net = body['network']
         self.assertEqual(updated_net['name'], new_name)
         # Find a cidr that is not in use yet and create a subnet with it
@@ -203,7 +204,7 @@ class NetworksTest(base.BaseNetworkTest):
     @test.idempotent_id('2bf13842-c93f-4a69-83ed-717d2ec3b44e')
     def test_show_network(self):
         # Verify the details of a network
-        body = self.networks_client.show_network(self.network['id'])
+        body = self.client.show_network(self.network['id'])
         network = body['network']
         for key in ['id', 'name']:
             self.assertEqual(network[key], self.network[key])
@@ -212,8 +213,8 @@ class NetworksTest(base.BaseNetworkTest):
     def test_show_network_fields(self):
         # Verify specific fields of a network
         fields = ['id', 'name']
-        body = self.networks_client.show_network(self.network['id'],
-                                                 fields=fields)
+        body = self.client.show_network(self.network['id'],
+                                        fields=fields)
         network = body['network']
         self.assertEqual(sorted(network.keys()), sorted(fields))
         for field_name in fields:
@@ -223,7 +224,7 @@ class NetworksTest(base.BaseNetworkTest):
     @test.idempotent_id('f7ffdeda-e200-4a7a-bcbe-05716e86bf43')
     def test_list_networks(self):
         # Verify the network exists in the list of all networks
-        body = self.networks_client.list_networks()
+        body = self.client.list_networks()
         networks = [network['id'] for network in body['networks']
                     if network['id'] == self.network['id']]
         self.assertNotEmpty(networks, "Created network not found in the list")
@@ -232,7 +233,7 @@ class NetworksTest(base.BaseNetworkTest):
     def test_list_networks_fields(self):
         # Verify specific fields of the networks
         fields = ['id', 'name']
-        body = self.networks_client.list_networks(fields=fields)
+        body = self.client.list_networks(fields=fields)
         networks = body['networks']
         self.assertNotEmpty(networks, "Network list returned is empty")
         for network in networks:
@@ -282,7 +283,7 @@ class NetworksTest(base.BaseNetworkTest):
     def _try_delete_network(self, net_id):
         # delete network, if it exists
         try:
-            self.networks_client.delete_network(net_id)
+            self.client.delete_network(net_id)
         # if network is not found, this means it was deleted in the test
         except lib_exc.NotFound:
             pass
@@ -291,7 +292,7 @@ class NetworksTest(base.BaseNetworkTest):
     def test_delete_network_with_subnet(self):
         # Creates a network
         name = data_utils.rand_name('network-')
-        body = self.networks_client.create_network(name=name)
+        body = self.client.create_network(name=name)
         network = body['network']
         net_id = network['id']
         self.addCleanup(self._try_delete_network, net_id)
@@ -301,7 +302,7 @@ class NetworksTest(base.BaseNetworkTest):
         subnet_id = subnet['id']
 
         # Delete network while the subnet still exists
-        body = self.networks_client.delete_network(net_id)
+        body = self.client.delete_network(net_id)
 
         # Verify that the subnet got automatically deleted.
         self.assertRaises(lib_exc.NotFound, self.client.show_subnet,
@@ -386,7 +387,7 @@ class NetworksTest(base.BaseNetworkTest):
     @test.idempotent_id('af774677-42a9-4e4b-bb58-16fe6a5bc1ec')
     def test_external_network_visibility(self):
         """Verifies user can see external networks but not subnets."""
-        body = self.networks_client.list_networks(**{'router:external': True})
+        body = self.client.list_networks(**{'router:external': True})
         networks = [network['id'] for network in body['networks']]
         self.assertNotEmpty(networks, "No external networks found")
 
@@ -430,9 +431,9 @@ class BulkNetworkOpsTestJSON(base.BaseNetworkTest):
 
     def _delete_networks(self, created_networks):
         for n in created_networks:
-            self.networks_client.delete_network(n['id'])
+            self.client.delete_network(n['id'])
         # Asserting that the networks are not found in the list after deletion
-        body = self.networks_client.list_networks()
+        body = self.client.list_networks()
         networks_list = [network['id'] for network in body['networks']]
         for n in created_networks:
             self.assertNotIn(n['id'], networks_list)
@@ -465,7 +466,7 @@ class BulkNetworkOpsTestJSON(base.BaseNetworkTest):
         created_networks = body['networks']
         self.addCleanup(self._delete_networks, created_networks)
         # Asserting that the networks are found in the list after creation
-        body = self.networks_client.list_networks()
+        body = self.client.list_networks()
         networks_list = [network['id'] for network in body['networks']]
         for n in created_networks:
             self.assertIsNotNone(n['id'])
@@ -537,7 +538,7 @@ class BulkNetworkOpsIpV6TestJSON(BulkNetworkOpsTestJSON):
     _ip_version = 6
 
 
-class NetworksIpV6TestJSON(NetworksTest):
+class NetworksIpV6TestJSON(NetworksTestJSON):
     _ip_version = 6
 
     @test.idempotent_id('e41a4888-65a6-418c-a095-f7c2ef4ad59a')
@@ -634,7 +635,7 @@ class NetworksIpV6TestAttrs(NetworksIpV6TestJSON):
         self.assertRaisesRegexp(
             lib_exc.Conflict,
             "There are one or more ports still in use on the network",
-            self.networks_client.delete_network,
+            self.client.delete_network,
             slaac_network['id'])
 
     @test.idempotent_id('88554555-ebf8-41ef-9300-4926d45e06e9')

@@ -101,15 +101,14 @@ class BaremetalBasicOps(manager.BaremetalScenarioTest):
     def get_flavor_ephemeral_size(self):
         """Returns size of the ephemeral partition in GiB."""
         f_id = self.instance['flavor']['id']
-        flavor = self.flavors_client.show_flavor(f_id)['flavor']
+        flavor = self.flavors_client.show_flavor(f_id)
         ephemeral = flavor.get('OS-FLV-EXT-DATA:ephemeral')
         if not ephemeral or ephemeral == 'N/A':
             return None
         return int(ephemeral)
 
     def add_floating_ip(self):
-        floating_ip = (self.floating_ips_client.create_floating_ip()
-                       ['floating_ip'])
+        floating_ip = self.floating_ips_client.create_floating_ip()
         self.floating_ips_client.associate_floating_ip_to_server(
             floating_ip['ip'], self.instance['id'])
         return floating_ip['ip']

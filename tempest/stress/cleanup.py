@@ -17,7 +17,6 @@
 from oslo_log import log as logging
 
 from tempest import clients
-from tempest.common import waiters
 
 LOG = logging.getLogger(__name__)
 
@@ -35,12 +34,11 @@ def cleanup():
 
     for s in body['servers']:
         try:
-            waiters.wait_for_server_termination(admin_manager.servers_client,
-                                                s['id'])
+            admin_manager.servers_client.wait_for_server_termination(s['id'])
         except Exception:
             pass
 
-    keypairs = admin_manager.keypairs_client.list_keypairs()['keypairs']
+    keypairs = admin_manager.keypairs_client.list_keypairs()
     LOG.info("Cleanup::remove %s keypairs" % len(keypairs))
     for k in keypairs:
         try:
@@ -49,8 +47,7 @@ def cleanup():
             pass
 
     secgrp_client = admin_manager.security_groups_client
-    secgrp = (secgrp_client.list_security_groups(all_tenants=True)
-              ['security_groups'])
+    secgrp = secgrp_client.list_security_groups(all_tenants=True)
     secgrp_del = [grp for grp in secgrp if grp['name'] != 'default']
     LOG.info("Cleanup::remove %s Security Group" % len(secgrp_del))
     for g in secgrp_del:
@@ -59,8 +56,7 @@ def cleanup():
         except Exception:
             pass
 
-    floating_ips = (admin_manager.floating_ips_client.list_floating_ips()
-                    ['floating_ips'])
+    floating_ips = admin_manager.floating_ips_client.list_floating_ips()
     LOG.info("Cleanup::remove %s floating ips" % len(floating_ips))
     for f in floating_ips:
         try:
@@ -68,13 +64,13 @@ def cleanup():
         except Exception:
             pass
 
-    users = admin_manager.identity_client.get_users()['users']
+    users = admin_manager.identity_client.get_users()
     LOG.info("Cleanup::remove %s users" % len(users))
     for user in users:
         if user['name'].startswith("stress_user"):
             admin_manager.identity_client.delete_user(user['id'])
 
-    tenants = admin_manager.identity_client.list_tenants()['tenants']
+    tenants = admin_manager.identity_client.list_tenants()
     LOG.info("Cleanup::remove %s tenants" % len(tenants))
     for tenant in tenants:
         if tenant['name'].startswith("stress_tenant"):
@@ -83,8 +79,8 @@ def cleanup():
     # We have to delete snapshots first or
     # volume deletion may block
 
-    _, snaps = admin_manager.snapshots_client.list_snapshots(
-        params={"all_tenants": True})['snapshots']
+    _, snaps = admin_manager.snapshots_client.\
+        list_snapshots(params={"all_tenants": True})
     LOG.info("Cleanup::remove %s snapshots" % len(snaps))
     for v in snaps:
         try:

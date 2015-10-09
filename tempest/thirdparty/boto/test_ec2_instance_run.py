@@ -348,7 +348,7 @@ class InstanceRunTest(boto_test.BotoTestCase):
 
         instance.stop()
         address.disassociate()
-        self.assertAddressDisassociatedWait(address)
+        self.assertAddressDissasociatedWait(address)
         self.cancelResourceCleanUp(rcuk_da)
         address.release()
         self.assertAddressReleasedWait(address)

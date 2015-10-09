@@ -54,12 +54,11 @@ class VolumesTestJSON(base.BaseV2ComputeTest):
             v_name = data_utils.rand_name('volume')
             metadata = {'Type': 'work'}
             try:
-                volume = cls.client.create_volume(size=CONF.volume.volume_size,
-                                                  display_name=v_name,
-                                                  metadata=metadata)['volume']
+                volume = cls.client.create_volume(display_name=v_name,
+                                                  metadata=metadata)
                 waiters.wait_for_volume_status(cls.client,
                                                volume['id'], 'available')
-                volume = cls.client.show_volume(volume['id'])['volume']
+                volume = cls.client.show_volume(volume['id'])
                 cls.volume_list.append(volume)
                 cls.volume_id_list.append(volume['id'])
             except Exception:
@@ -89,7 +88,7 @@ class VolumesTestJSON(base.BaseV2ComputeTest):
     def test_volume_list(self):
         # Should return the list of Volumes
         # Fetch all Volumes
-        fetched_list = self.client.list_volumes()['volumes']
+        fetched_list = self.client.list_volumes()
         # Now check if all the Volumes created in setup are in fetched list
         missing_volumes = [
             v for v in self.volume_list if v not in fetched_list
@@ -104,7 +103,7 @@ class VolumesTestJSON(base.BaseV2ComputeTest):
     def test_volume_list_with_details(self):
         # Should return the list of Volumes with details
         # Fetch all Volumes
-        fetched_list = self.client.list_volumes(detail=True)['volumes']
+        fetched_list = self.client.list_volumes(detail=True)
         # Now check if all the Volumes created in setup are in fetched list
         missing_volumes = [
             v for v in self.volume_list if v not in fetched_list
@@ -119,7 +118,7 @@ class VolumesTestJSON(base.BaseV2ComputeTest):
     def test_volume_list_param_limit(self):
         # Return the list of volumes based on limit set
         params = {'limit': 2}
-        fetched_vol_list = self.client.list_volumes(**params)['volumes']
+        fetched_vol_list = self.client.list_volumes(**params)
 
         self.assertEqual(len(fetched_vol_list), params['limit'],
                          "Failed to list volumes by limit set")
@@ -128,8 +127,7 @@ class VolumesTestJSON(base.BaseV2ComputeTest):
     def test_volume_list_with_detail_param_limit(self):
         # Return the list of volumes with details based on limit set.
         params = {'limit': 2}
-        fetched_vol_list = self.client.list_volumes(detail=True,
-                                                    **params)['volumes']
+        fetched_vol_list = self.client.list_volumes(detail=True, **params)
 
         self.assertEqual(len(fetched_vol_list), params['limit'],
                          "Failed to list volume details by limit set")
@@ -138,9 +136,9 @@ class VolumesTestJSON(base.BaseV2ComputeTest):
     def test_volume_list_param_offset_and_limit(self):
         # Return the list of volumes based on offset and limit set.
         # get all volumes list
-        all_vol_list = self.client.list_volumes()['volumes']
+        all_vol_list = self.client.list_volumes()
         params = {'offset': 1, 'limit': 1}
-        fetched_vol_list = self.client.list_volumes(**params)['volumes']
+        fetched_vol_list = self.client.list_volumes(**params)
 
         # Validating length of the fetched volumes
         self.assertEqual(len(fetched_vol_list), params['limit'],
@@ -155,10 +153,9 @@ class VolumesTestJSON(base.BaseV2ComputeTest):
     def test_volume_list_with_detail_param_offset_and_limit(self):
         # Return the list of volumes details based on offset and limit set.
         # get all volumes list
-        all_vol_list = self.client.list_volumes(detail=True)['volumes']
+        all_vol_list = self.client.list_volumes(detail=True)
         params = {'offset': 1, 'limit': 1}
-        fetched_vol_list = self.client.list_volumes(detail=True,
-                                                    **params)['volumes']
+        fetched_vol_list = self.client.list_volumes(detail=True, **params)
 
         # Validating length of the fetched volumes
         self.assertEqual(len(fetched_vol_list), params['limit'],

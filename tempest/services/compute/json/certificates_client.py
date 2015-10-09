@@ -26,7 +26,7 @@ class CertificatesClient(service_client.ServiceClient):
         resp, body = self.get(url)
         body = json.loads(body)
         self.validate_response(schema.get_certificate, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['certificate'])
 
     def create_certificate(self):
         """create certificates."""
@@ -34,4 +34,4 @@ class CertificatesClient(service_client.ServiceClient):
         resp, body = self.post(url, None)
         body = json.loads(body)
         self.validate_response(schema.create_certificate, resp, body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBody(resp, body['certificate'])

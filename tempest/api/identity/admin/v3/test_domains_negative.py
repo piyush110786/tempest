@@ -28,8 +28,7 @@ class DomainsNegativeTestJSON(base.BaseIdentityV3AdminTest):
     def test_delete_active_domain(self):
         d_name = data_utils.rand_name('domain')
         d_desc = data_utils.rand_name('domain-desc')
-        domain = self.client.create_domain(d_name,
-                                           description=d_desc)['domain']
+        domain = self.client.create_domain(d_name, description=d_desc)
         domain_id = domain['id']
 
         self.addCleanup(self.delete_domain, domain_id)

@@ -297,7 +297,6 @@ class BaseDataProcessingTest(tempest.test.BaseTestCase):
                                                           flavor_id,
                                                           node_configs,
                                                           **kwargs)
-        resp_body = resp_body['node_group_template']
         # store id of created node group template
         cls._node_group_templates.append(resp_body['id'])
 
@@ -317,7 +316,6 @@ class BaseDataProcessingTest(tempest.test.BaseTestCase):
                                                        node_groups,
                                                        cluster_configs,
                                                        **kwargs)
-        resp_body = resp_body['cluster_template']
         # store id of created cluster template
         cls._cluster_templates.append(resp_body['id'])
 
@@ -332,7 +330,6 @@ class BaseDataProcessingTest(tempest.test.BaseTestCase):
         removed in tearDownClass method.
         """
         resp_body = cls.client.create_data_source(name, type, url, **kwargs)
-        resp_body = resp_body['data_source']
         # store id of created data source
         cls._data_sources.append(resp_body['id'])
 
@@ -346,7 +343,6 @@ class BaseDataProcessingTest(tempest.test.BaseTestCase):
         be automatically removed in tearDownClass method.
         """
         resp_body = cls.client.create_job_binary_internal(name, data)
-        resp_body = resp_body['job_binary_internal']
         # store id of created job binary internal
         cls._job_binary_internals.append(resp_body['id'])
 
@@ -361,7 +357,6 @@ class BaseDataProcessingTest(tempest.test.BaseTestCase):
         removed in tearDownClass method.
         """
         resp_body = cls.client.create_job_binary(name, url, extra, **kwargs)
-        resp_body = resp_body['job_binary']
         # store id of created job binary
         cls._job_binaries.append(resp_body['id'])
 
@@ -377,7 +372,6 @@ class BaseDataProcessingTest(tempest.test.BaseTestCase):
         """
         resp_body = cls.client.create_job(name,
                                           job_type, mains, libs, **kwargs)
-        resp_body = resp_body['job']
         # store id of created job
         cls._jobs.append(resp_body['id'])
 
@@ -406,7 +400,7 @@ class BaseDataProcessingTest(tempest.test.BaseTestCase):
         """
         if not cls.default_plugin:
             return None
-        plugin = cls.client.get_plugin(cls.default_plugin)['plugin']
+        plugin = cls.client.get_plugin(cls.default_plugin)
 
         for version in DEFAULT_TEMPLATES[cls.default_plugin].keys():
             if version in plugin['versions']:

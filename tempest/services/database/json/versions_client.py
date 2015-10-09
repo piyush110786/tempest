@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_serialization import jsonutils as json
 from six.moves.urllib import parse as urllib
 
 from tempest.common import service_client
@@ -44,5 +43,4 @@ class DatabaseVersionsClient(service_client.ServiceClient):
 
         resp, body = self.get(url)
         self.expected_success(200, resp.status)
-        body = json.loads(body)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, self._parse_resp(body))

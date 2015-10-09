@@ -25,7 +25,7 @@ class BaseExtensionsClient(service_client.ServiceClient):
         resp, body = self.get(url)
         body = json.loads(body)
         self.expected_success(200, resp.status)
-        return service_client.ResponseBody(resp, body)
+        return service_client.ResponseBodyList(resp, body['extensions'])
 
 
 class ExtensionsClient(BaseExtensionsClient):

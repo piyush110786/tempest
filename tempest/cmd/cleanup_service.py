@@ -83,7 +83,7 @@ def init_conf():
 
 def _get_network_id(net_name, tenant_name):
     am = clients.AdminManager()
-    net_cl = am.networks_client
+    net_cl = am.network_client
     id_cl = am.identity_client
 
     networks = net_cl.list_networks()
@@ -195,7 +195,7 @@ class ServerGroupService(ServerService):
 
     def list(self):
         client = self.client
-        sgs = client.list_server_groups()['server_groups']
+        sgs = client.list_server_groups()
         LOG.debug("List count, %s Server Groups" % len(sgs))
         return sgs
 
@@ -220,7 +220,7 @@ class StackService(BaseService):
 
     def list(self):
         client = self.client
-        stacks = client.list_stacks()['stacks']
+        stacks = client.list_stacks()
         LOG.debug("List count, %s Stacks" % len(stacks))
         return stacks
 
@@ -245,7 +245,7 @@ class KeyPairService(BaseService):
 
     def list(self):
         client = self.client
-        keypairs = client.list_keypairs()['keypairs']
+        keypairs = client.list_keypairs()
         LOG.debug("List count, %s Keypairs" % len(keypairs))
         return keypairs
 
@@ -271,7 +271,7 @@ class SecurityGroupService(BaseService):
 
     def list(self):
         client = self.client
-        secgrps = client.list_security_groups()['security_groups']
+        secgrps = client.list_security_groups()
         secgrp_del = [grp for grp in secgrps if grp['name'] != 'default']
         LOG.debug("List count, %s Security Groups" % len(secgrp_del))
         return secgrp_del
@@ -297,7 +297,7 @@ class FloatingIpService(BaseService):
 
     def list(self):
         client = self.client
-        floating_ips = client.list_floating_ips()['floating_ips']
+        floating_ips = client.list_floating_ips()
         LOG.debug("List count, %s Floating IPs" % len(floating_ips))
         return floating_ips
 
@@ -322,7 +322,7 @@ class VolumeService(BaseService):
 
     def list(self):
         client = self.client
-        vols = client.list_volumes()['volumes']
+        vols = client.list_volumes()
         LOG.debug("List count, %s Volumes" % len(vols))
         return vols
 
@@ -353,7 +353,7 @@ class VolumeQuotaService(BaseService):
             LOG.exception("Delete Volume Quotas exception.")
 
     def dry_run(self):
-        quotas = self.client.show_quota_usage(self.tenant_id)['quota_set']
+        quotas = self.client.show_quota_usage(self.tenant_id)
         self.data['volume_quotas'] = quotas
 
 
@@ -372,7 +372,7 @@ class NovaQuotaService(BaseService):
 
     def dry_run(self):
         client = self.limits_client
-        quotas = client.show_limits()['limits']
+        quotas = client.show_limits()
         self.data['compute_quotas'] = quotas['absolute']
 
 
@@ -381,7 +381,6 @@ class NetworkService(BaseService):
     def __init__(self, manager, **kwargs):
         super(NetworkService, self).__init__(kwargs)
         self.client = manager.network_client
-        self.networks_client = manager.networks_client
 
     def _filter_by_conf_networks(self, item_list):
         if not item_list or not all(('network_id' in i for i in item_list)):
@@ -391,7 +390,7 @@ class NetworkService(BaseService):
                 not in CONF_NETWORKS]
 
     def list(self):
-        client = self.networks_client
+        client = self.client
         networks = client.list_networks(**self.tenant_filter)
         networks = networks['networks']
         # filter out networks declared in tempest.conf
@@ -402,7 +401,7 @@ class NetworkService(BaseService):
         return networks
 
     def delete(self):
-        client = self.networks_client
+        client = self.client
         networks = self.list()
         for n in networks:
             try:
@@ -732,7 +731,7 @@ class FlavorService(BaseService):
 
     def list(self):
         client = self.client
-        flavors = client.list_flavors({"is_public": None})['flavors']
+        flavors = client.list_flavors({"is_public": None})
         if not self.is_save_state:
             # recreate list removing saved flavors
             flavors = [flavor for flavor in flavors if flavor['id']
@@ -771,7 +770,7 @@ class ImageService(BaseService):
 
     def list(self):
         client = self.client
-        images = client.list_images({"all_tenants": True})['images']
+        images = client.list_images({"all_tenants": True})
         if not self.is_save_state:
             images = [image for image in images if image['id']
                       not in self.saved_state_json['images'].keys()]
@@ -890,7 +889,7 @@ class TenantService(IdentityService):
 
     def list(self):
         client = self.client
-        tenants = client.list_tenants()['tenants']
+        tenants = client.list_tenants()
         if not self.is_save_state:
             tenants = [tenant for tenant in tenants if (tenant['id']
                        not in self.saved_state_json['tenants'].keys()
@@ -931,7 +930,7 @@ class DomainService(BaseService):
 
     def list(self):
         client = self.client
-        domains = client.list_domains()['domains']
+        domains = client.list_domains()
         if not self.is_save_state:
             domains = [domain for domain in domains if domain['id']
                        not in self.saved_state_json['domains'].keys()]

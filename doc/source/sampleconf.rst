@@ -8,6 +8,7 @@ auto-generated from Tempest when this documentation is built, so
 if you are having issues with an option, please compare your version of
 Tempest with the version of this documentation.
 
-The sample configuration can also be viewed in `file form <_static/tempest.conf.sample>`_.
+The sample configuration can also be viewed in `file form <_static/tempest.conf>`_.
 
-.. literalinclude:: _static/tempest.conf.sample
+.. include:: _static/tempest.conf
+   :code:

@@ -27,8 +27,9 @@ class EndPointsTestJSON(base.BaseIdentityV2AdminTest):
         s_name = data_utils.rand_name('service')
         s_type = data_utils.rand_name('type')
         s_description = data_utils.rand_name('description')
-        cls.service_data = cls.client.create_service(
-            s_name, s_type, description=s_description)['OS-KSADM:service']
+        cls.service_data =\
+            cls.client.create_service(s_name, s_type,
+                                      description=s_description)
         cls.service_id = cls.service_data['id']
         cls.service_ids.append(cls.service_id)
         # Create endpoints so as to use for LIST and GET test cases
@@ -40,7 +41,7 @@ class EndPointsTestJSON(base.BaseIdentityV2AdminTest):
                                                   region,
                                                   publicurl=url,
                                                   adminurl=url,
-                                                  internalurl=url)['endpoint']
+                                                  internalurl=url)
             # list_endpoints() will return 'enabled' field
             endpoint['enabled'] = True
             cls.setup_endpoints.append(endpoint)
@@ -56,7 +57,7 @@ class EndPointsTestJSON(base.BaseIdentityV2AdminTest):
     @test.idempotent_id('11f590eb-59d8-4067-8b2b-980c7f387f51')
     def test_list_endpoints(self):
         # Get a list of endpoints
-        fetched_endpoints = self.client.list_endpoints()['endpoints']
+        fetched_endpoints = self.client.list_endpoints()
         # Asserting LIST endpoints
         missing_endpoints =\
             [e for e in self.setup_endpoints if e not in fetched_endpoints]
@@ -72,18 +73,18 @@ class EndPointsTestJSON(base.BaseIdentityV2AdminTest):
                                                region,
                                                publicurl=url,
                                                adminurl=url,
-                                               internalurl=url)['endpoint']
+                                               internalurl=url)
         # Asserting Create Endpoint response body
         self.assertIn('id', endpoint)
         self.assertEqual(region, endpoint['region'])
         self.assertEqual(url, endpoint['publicurl'])
         # Checking if created endpoint is present in the list of endpoints
-        fetched_endpoints = self.client.list_endpoints()['endpoints']
+        fetched_endpoints = self.client.list_endpoints()
         fetched_endpoints_id = [e['id'] for e in fetched_endpoints]
         self.assertIn(endpoint['id'], fetched_endpoints_id)
         # Deleting the endpoint created in this method
         self.client.delete_endpoint(endpoint['id'])
         # Checking whether endpoint is deleted successfully
-        fetched_endpoints = self.client.list_endpoints()['endpoints']
+        fetched_endpoints = self.client.list_endpoints()
         fetched_endpoints_id = [e['id'] for e in fetched_endpoints]
         self.assertNotIn(endpoint['id'], fetched_endpoints_id)

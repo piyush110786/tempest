@@ -47,24 +47,24 @@ class VolumesV2TransfersTest(base.BaseVolumeTest):
         self.addCleanup(self._delete_volume, volume['id'])
 
         # Create a volume transfer
-        transfer = self.client.create_volume_transfer(volume['id'])['transfer']
+        transfer = self.client.create_volume_transfer(volume['id'])
         transfer_id = transfer['id']
         auth_key = transfer['auth_key']
         self.client.wait_for_volume_status(volume['id'],
                                            'awaiting-transfer')
 
         # Get a volume transfer
-        body = self.client.show_volume_transfer(transfer_id)['transfer']
+        body = self.client.show_volume_transfer(transfer_id)
         self.assertEqual(volume['id'], body['volume_id'])
 
         # List volume transfers, the result should be greater than
         # or equal to 1
-        body = self.client.list_volume_transfers()['transfers']
+        body = self.client.list_volume_transfers()
         self.assertThat(len(body), matchers.GreaterThan(0))
 
         # Accept a volume transfer by alt_tenant
         body = self.alt_client.accept_volume_transfer(transfer_id,
-                                                      auth_key)['transfer']
+                                                      auth_key)
         self.alt_client.wait_for_volume_status(volume['id'], 'available')
 
     @test.idempotent_id('ab526943-b725-4c07-b875-8e8ef87a2c30')
@@ -74,13 +74,13 @@ class VolumesV2TransfersTest(base.BaseVolumeTest):
         self.addCleanup(self._delete_volume, volume['id'])
 
         # Create a volume transfer
-        body = self.client.create_volume_transfer(volume['id'])['transfer']
+        body = self.client.create_volume_transfer(volume['id'])
         transfer_id = body['id']
         self.client.wait_for_volume_status(volume['id'],
                                            'awaiting-transfer')
 
         # List all volume transfers (looking for the one we created)
-        body = self.client.list_volume_transfers()['transfers']
+        body = self.client.list_volume_transfers()
         for transfer in body:
             if volume['id'] == transfer['volume_id']:
                 break
