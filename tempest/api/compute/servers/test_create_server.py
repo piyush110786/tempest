@@ -41,6 +41,7 @@ class ServersTestJSON(base.BaseV2ComputeTest):
         super(ServersTestJSON, cls).setup_clients()
         cls.client = cls.servers_client
         cls.network_client = cls.os.network_client
+        cls.networks_client = cls.os.networks_client
 
     @classmethod
     def resource_setup(cls):
@@ -58,20 +59,21 @@ class ServersTestJSON(base.BaseV2ComputeTest):
             validatable=True,
             wait_until='ACTIVE',
             name=cls.name,
-            meta=cls.meta,
+            metadata=cls.meta,
             accessIPv4=cls.accessIPv4,
             accessIPv6=cls.accessIPv6,
             personality=personality,
             disk_config=disk_config)
         cls.password = cls.server_initial['adminPass']
         waiters.wait_for_server_status(cls.client, cls.server_initial['id'],
-								'ACTIVE')
-        cls.server = cls.client.show_server(cls.server_initial['id'])
+                                       'ACTIVE')
+        cls.server = (cls.client.show_server(cls.server_initial['id'])
+                      ['server'])
 
     def _create_net_subnet_ret_net_from_cidr(self, cidr):
         name_net = data_utils.rand_name(self.__class__.__name__)
-        net = self.network_client.create_network(name=name_net)
-        self.addCleanup(self.network_client.delete_network,
+        net = self.networks_client.create_network(name=name_net)
+        self.addCleanup(self.networks_client.delete_network,
                         net['network']['id'])
 
         subnet = self.network_client.create_subnet(
@@ -119,7 +121,7 @@ class ServersTestJSON(base.BaseV2ComputeTest):
     def test_verify_created_server_vcpus(self):
         # Verify that the number of vcpus reported by the instance matches
         # the amount stated by the flavor
-        flavor = self.flavors_client.show_flavor(self.flavor_ref)
+        flavor = self.flavors_client.show_flavor(self.flavor_ref)['flavor']
         linux_client = remote_client.RemoteClient(
             self.get_server_ip(self.server),
             self.ssh_user,
@@ -145,17 +147,18 @@ class ServersTestJSON(base.BaseV2ComputeTest):
         name = data_utils.rand_name('server_group')
         policies = ['affinity']
         body = self.server_groups_client.create_server_group(
-            name=name, policies=policies)
+            name=name, policies=policies)['server_group']
         group_id = body['id']
         self.addCleanup(self.server_groups_client.delete_server_group,
                         group_id)
 
         hints = {'group': group_id}
-        server = self.create_test_server(sched_hints=hints,
+        server = self.create_test_server(scheduler_hints=hints,
                                          wait_until='ACTIVE')
 
         # Check a server is in the group
-        server_group = self.server_groups_client.get_server_group(group_id)
+        server_group = (self.server_groups_client.get_server_group(group_id)
+                        ['server_group'])
         self.assertIn(server['id'], server_group['members'])
 
     @test.idempotent_id('0578d144-ed74-43f8-8e57-ab10dbf9b3c2')
@@ -181,11 +184,13 @@ class ServersTestJSON(base.BaseV2ComputeTest):
         # we're OK.
         def cleanup_server():
             self.client.delete_server(server_multi_nics['id'])
-            self.client.wait_for_server_termination(server_multi_nics['id'])
+            waiters.wait_for_server_termination(self.client,
+                                                server_multi_nics['id'])
 
         self.addCleanup(cleanup_server)
 
-        addresses = self.client.list_addresses(server_multi_nics['id'])
+        addresses = (self.client.list_addresses(server_multi_nics['id'])
+                     ['addresses'])
 
         # We can't predict the ip addresses assigned to the server on networks.
         # Sometimes the assigned addresses are ['19.80.0.2', '19.86.0.2'], at
@@ -221,11 +226,13 @@ class ServersTestJSON(base.BaseV2ComputeTest):
 
         def cleanup_server():
             self.client.delete_server(server_multi_nics['id'])
-            self.client.wait_for_server_termination(server_multi_nics['id'])
+            waiters.wait_for_server_termination(self.client,
+                                                server_multi_nics['id'])
 
         self.addCleanup(cleanup_server)
 
-        addresses = self.client.list_addresses(server_multi_nics['id'])
+        addresses = (self.client.list_addresses(server_multi_nics['id'])
+                     ['addresses'])
 
         addr = [addresses[net1['network']['name']][0]['addr'],
                 addresses[net2['network']['name']][0]['addr'],
@@ -275,7 +282,7 @@ class ServersWithSpecificFlavorTestJSON(base.BaseV2ComputeAdminTest):
                       create_flavor(name=flavor_with_eph_disk_name,
                                     ram=ram, vcpus=vcpus, disk=disk,
                                     id=flavor_with_eph_disk_id,
-                                    ephemeral=1))
+                                    ephemeral=1))['flavor']
             self.addCleanup(flavor_clean_up, flavor['id'])
 
             return flavor['id']
@@ -292,7 +299,7 @@ class ServersWithSpecificFlavorTestJSON(base.BaseV2ComputeAdminTest):
             flavor = (self.flavor_client.
                       create_flavor(name=flavor_no_eph_disk_name,
                                     ram=ram, vcpus=vcpus, disk=disk,
-                                    id=flavor_no_eph_disk_id))
+                                    id=flavor_no_eph_disk_id))['flavor']
             self.addCleanup(flavor_clean_up, flavor['id'])
 
             return flavor['id']
@@ -306,15 +313,15 @@ class ServersWithSpecificFlavorTestJSON(base.BaseV2ComputeAdminTest):
 
         admin_pass = self.image_ssh_password
 
-        server_no_eph_disk = (self.create_test_server(
-                              validatable=True,
-                              wait_until='ACTIVE',
-                              adminPass=admin_pass,
-                              flavor=flavor_no_eph_disk_id))
+        server_no_eph_disk = self.create_test_server(
+            validatable=True,
+            wait_until='ACTIVE',
+            adminPass=admin_pass,
+            flavor=flavor_no_eph_disk_id)
 
         # Get partition number of server without extra specs.
         server_no_eph_disk = self.client.show_server(
-            server_no_eph_disk['id'])
+            server_no_eph_disk['id'])['server']
         linux_client = remote_client.RemoteClient(
             self.get_server_ip(server_no_eph_disk),
             self.ssh_user,
@@ -325,14 +332,14 @@ class ServersWithSpecificFlavorTestJSON(base.BaseV2ComputeAdminTest):
         # Explicit server deletion necessary for Juno compatibility
         self.client.delete_server(server_no_eph_disk['id'])
 
-        server_with_eph_disk = (self.create_test_server(
-                                validatable=True,
-                                wait_until='ACTIVE',
-                                adminPass=admin_pass,
-                                flavor=flavor_with_eph_disk_id))
+        server_with_eph_disk = self.create_test_server(
+            validatable=True,
+            wait_until='ACTIVE',
+            adminPass=admin_pass,
+            flavor=flavor_with_eph_disk_id)
 
         server_with_eph_disk = self.client.show_server(
-            server_with_eph_disk['id'])
+            server_with_eph_disk['id'])['server']
         linux_client = remote_client.RemoteClient(
             self.get_server_ip(server_with_eph_disk),
             self.ssh_user,

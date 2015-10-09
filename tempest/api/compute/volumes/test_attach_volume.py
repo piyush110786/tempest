@@ -70,12 +70,12 @@ class AttachVolumeTestJSON(base.BaseV2ComputeTest):
             adminPass=admin_pass)
 
         # Record addresses so that we can ssh later
-        self.server['addresses'] = (
-            self.servers_client.list_addresses(self.server['id']))
+        self.server['addresses'] = self.servers_client.list_addresses(
+            self.server['id'])['addresses']
 
         # Create a volume and wait for it to become ready
         self.volume = self.volumes_client.create_volume(
-            CONF.volume.volume_size, display_name='test')
+            CONF.volume.volume_size, display_name='test')['volume']
         self.addCleanup(self._delete_volume)
         self.volumes_client.wait_for_volume_status(self.volume['id'],
                                                    'available')
@@ -83,8 +83,8 @@ class AttachVolumeTestJSON(base.BaseV2ComputeTest):
         # Attach the volume to the server
         self.attachment = self.servers_client.attach_volume(
             self.server['id'],
-            self.volume['id'],
-            device='/dev/%s' % self.device)
+            volumeId=self.volume['id'],
+            device='/dev/%s' % self.device)['volumeAttachment']
         self.volumes_client.wait_for_volume_status(self.volume['id'], 'in-use')
 
         self.addCleanup(self._detach, self.server['id'], self.volume['id'])
@@ -97,11 +97,11 @@ class AttachVolumeTestJSON(base.BaseV2ComputeTest):
         # the volume remains attached.
         self._create_and_attach()
 
-        self.servers_client.stop(self.server['id'])
+        self.servers_client.stop_server(self.server['id'])
         waiters.wait_for_server_status(self.servers_client, self.server['id'],
                                        'SHUTOFF')
 
-        self.servers_client.start(self.server['id'])
+        self.servers_client.start_server(self.server['id'])
         waiters.wait_for_server_status(self.servers_client, self.server['id'],
                                        'ACTIVE')
 
@@ -116,11 +116,11 @@ class AttachVolumeTestJSON(base.BaseV2ComputeTest):
 
         self._detach(self.server['id'], self.volume['id'])
         self.attachment = None
-        self.servers_client.stop(self.server['id'])
+        self.servers_client.stop_server(self.server['id'])
         waiters.wait_for_server_status(self.servers_client, self.server['id'],
                                        'SHUTOFF')
 
-        self.servers_client.start(self.server['id'])
+        self.servers_client.start_server(self.server['id'])
         waiters.wait_for_server_status(self.servers_client, self.server['id'],
                                        'ACTIVE')
 
@@ -139,14 +139,14 @@ class AttachVolumeTestJSON(base.BaseV2ComputeTest):
         self._create_and_attach()
         # List Volume attachment of the server
         body = self.servers_client.list_volume_attachments(
-            self.server['id'])
+            self.server['id'])['volumeAttachments']
         self.assertEqual(2, len(body))
         self.assertIn(self.attachment, body)
 
         # Get Volume attachment of the server
         body = self.servers_client.get_volume_attachment(
             self.server['id'],
-            self.attachment['id'])
+            self.attachment['id'])['volumeAttachment']
         self.assertEqual(self.server['id'], body['serverId'])
         self.assertEqual(self.volume['id'], body['volumeId'])
         self.assertEqual(self.attachment['id'], body['id'])

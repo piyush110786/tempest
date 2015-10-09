@@ -13,9 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
+
 from oslo_log import log as logging
 
 from tempest import config
+from tempest import exceptions
 from tempest.scenario import manager
 from tempest.scenario import utils as test_utils
 from tempest import test
@@ -38,6 +41,7 @@ class TestServerBasicOps(manager.ScenarioTest):
      * Launch an instance
      * Perform ssh to instance
      * Verify metadata service
+     * Verify metadata on config_drive
      * Terminate the instance
     """
 
@@ -71,9 +75,12 @@ class TestServerBasicOps(manager.ScenarioTest):
     def boot_instance(self):
         # Create server with image and flavor from input scenario
         security_groups = [{'name': self.security_group['name']}]
+        self.md = {'meta1': 'data1', 'meta2': 'data2', 'metaN': 'dataN'}
         create_kwargs = {
             'key_name': self.keypair['name'],
-            'security_groups': security_groups
+            'security_groups': security_groups,
+            'config_drive': CONF.compute_feature_enabled.config_drive,
+            'metadata': self.md
         }
         self.instance = self.create_server(image=self.image_ref,
                                            flavor=self.flavor_ref,
@@ -82,7 +89,8 @@ class TestServerBasicOps(manager.ScenarioTest):
     def verify_ssh(self):
         if self.run_ssh:
             # Obtain a floating IP
-            self.floating_ip = self.floating_ips_client.create_floating_ip()
+            self.floating_ip = (self.floating_ips_client.create_floating_ip()
+                                ['floating_ip'])
             self.addCleanup(self.delete_wrapper,
                             self.floating_ips_client.delete_floating_ip,
                             self.floating_ip['id'])
@@ -98,9 +106,40 @@ class TestServerBasicOps(manager.ScenarioTest):
     def verify_metadata(self):
         if self.run_ssh and CONF.compute_feature_enabled.metadata_service:
             # Verify metadata service
-            result = self.ssh_client.exec_command(
-                "curl http://169.254.169.254/latest/meta-data/public-ipv4")
-            self.assertEqual(self.floating_ip['ip'], result)
+            md_url = 'http://169.254.169.254/latest/meta-data/public-ipv4'
+
+            def exec_cmd_and_verify_output():
+                cmd = 'curl ' + md_url
+                floating_ip = self.floating_ip['ip']
+                result = self.ssh_client.exec_command(cmd)
+                if result:
+                    msg = ('Failed while verifying metadata on server. Result '
+                           'of command "%s" is NOT "%s".' % (cmd, floating_ip))
+                    self.assertEqual(floating_ip, result, msg)
+                    return 'Verification is successful!'
+
+            if not test.call_until_true(exec_cmd_and_verify_output,
+                                        CONF.compute.build_timeout,
+                                        CONF.compute.build_interval):
+                raise exceptions.TimeoutException('Timed out while waiting to '
+                                                  'verify metadata on server. '
+                                                  '%s is empty.' % md_url)
+
+    def verify_metadata_on_config_drive(self):
+        if self.run_ssh and CONF.compute_feature_enabled.config_drive:
+            # Verify metadata on config_drive
+            cmd_blkid = 'blkid -t LABEL=config-2 -o device'
+            dev_name = self.ssh_client.exec_command(cmd_blkid)
+            dev_name = dev_name.rstrip()
+            self.ssh_client.exec_command('sudo mount %s /mnt' % dev_name)
+            cmd_md = 'sudo cat /mnt/openstack/latest/meta_data.json'
+            result = self.ssh_client.exec_command(cmd_md)
+            self.ssh_client.exec_command('sudo umount /mnt')
+            result = json.loads(result)
+            self.assertIn('meta', result)
+            msg = ('Failed while verifying metadata on config_drive on server.'
+                   ' Result of command "%s" is NOT "%s".' % (cmd_md, self.md))
+            self.assertEqual(self.md, result['meta'], msg)
 
     @test.idempotent_id('7fff3fb3-91d8-4fd0-bd7d-0204f1f180ba')
     @test.attr(type='smoke')
@@ -111,4 +150,5 @@ class TestServerBasicOps(manager.ScenarioTest):
         self.boot_instance()
         self.verify_ssh()
         self.verify_metadata()
+        self.verify_metadata_on_config_drive()
         self.servers_client.delete_server(self.instance['id'])
