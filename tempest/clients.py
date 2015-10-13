@@ -16,8 +16,9 @@
 import copy
 
 from oslo_log import log as logging
-from tempest_lib.services.identity.v2.token_client import TokenClientJSON
-from tempest_lib.services.identity.v3.token_client import V3TokenClientJSON
+from tempest_lib.services.compute.agents_client import AgentsClient
+from tempest_lib.services.identity.v2.token_client import TokenClient
+from tempest_lib.services.identity.v3.token_client import V3TokenClient
 
 from tempest.common import cred_provider
 from tempest.common import negative_rest_client
@@ -27,8 +28,6 @@ from tempest import manager
 from tempest.services.baremetal.v1.json.baremetal_client import \
     BaremetalClient
 from tempest.services import botoclients
-from tempest.services.compute.json.agents_client import \
-    AgentsClient
 from tempest.services.compute.json.aggregates_client import \
     AggregatesClient
 from tempest.services.compute.json.availability_zone_client import \
@@ -59,7 +58,8 @@ from tempest.services.compute.json.keypairs_client import KeyPairsClient
 from tempest.services.compute.json.limits_client import LimitsClient
 from tempest.services.compute.json.migrations_client import \
     MigrationsClient
-from tempest.services.compute.json.networks_client import NetworksClient
+from tempest.services.compute.json.networks_client import NetworksClient \
+    as ComputeNetworksClient
 from tempest.services.compute.json.quota_classes_client import \
     QuotaClassesClient
 from tempest.services.compute.json.quotas_client import QuotasClient
@@ -73,12 +73,15 @@ from tempest.services.compute.json.server_groups_client import \
     ServerGroupsClient
 from tempest.services.compute.json.servers_client import ServersClient
 from tempest.services.compute.json.services_client import ServicesClient
+from tempest.services.compute.json.snapshots_client import \
+    SnapshotsClient as ComputeSnapshotsClient
 from tempest.services.compute.json.tenant_networks_client import \
     TenantNetworksClient
 from tempest.services.compute.json.tenant_usages_client import \
     TenantUsagesClient
-from tempest.services.compute.json.volumes_extensions_client import \
-    VolumesExtensionsClient
+from tempest.services.compute.json.versions_client import VersionsClient
+from tempest.services.compute.json.volumes_client import \
+    VolumesClient as ComputeVolumesClient
 from tempest.services.data_processing.v1_1.data_processing_client import \
     DataProcessingClient
 from tempest.services.database.json.flavors_client import \
@@ -104,6 +107,7 @@ from tempest.services.image.v2.json.image_client import ImageClientV2
 from tempest.services.messaging.json.messaging_client import \
     MessagingClient
 from tempest.services.network.json.network_client import NetworkClient
+from tempest.services.network.json.networks_client import NetworksClient
 from tempest.services.object_storage.account_client import AccountClient
 from tempest.services.object_storage.container_client import ContainerClient
 from tempest.services.object_storage.object_client import ObjectClient
@@ -193,6 +197,14 @@ class Manager(manager.Manager):
             build_interval=CONF.network.build_interval,
             build_timeout=CONF.network.build_timeout,
             **self.default_params)
+        self.networks_client = NetworksClient(
+            self.auth_provider,
+            CONF.network.catalog_type,
+            CONF.network.region or CONF.identity.region,
+            endpoint_type=CONF.network.endpoint_type,
+            build_interval=CONF.network.build_interval,
+            build_timeout=CONF.network.build_timeout,
+            **self.default_params)
         self.messaging_client = MessagingClient(
             self.auth_provider,
             CONF.messaging.catalog_type,
@@ -259,7 +271,8 @@ class Manager(manager.Manager):
         params.update(self.default_params)
 
         self.agents_client = AgentsClient(self.auth_provider, **params)
-        self.networks_client = NetworksClient(self.auth_provider, **params)
+        self.compute_networks_client = ComputeNetworksClient(
+            self.auth_provider, **params)
         self.migrations_client = MigrationsClient(self.auth_provider,
                                                   **params)
         self.security_group_default_rules_client = (
@@ -320,9 +333,12 @@ class Manager(manager.Manager):
             'build_interval': CONF.volume.build_interval,
             'build_timeout': CONF.volume.build_timeout
         })
-        self.volumes_extensions_client = VolumesExtensionsClient(
-            self.auth_provider, default_volume_size=CONF.volume.volume_size,
-            **params_volume)
+        self.volumes_extensions_client = ComputeVolumesClient(
+            self.auth_provider, **params_volume)
+        self.compute_versions_client = VersionsClient(self.auth_provider,
+                                                      **params_volume)
+        self.snapshots_extensions_client = ComputeSnapshotsClient(
+            self.auth_provider, **params_volume)
 
     def _set_database_clients(self):
         self.database_flavors_client = DatabaseFlavorsClient(
@@ -375,14 +391,14 @@ class Manager(manager.Manager):
         # API version is marked as enabled
         if CONF.identity_feature_enabled.api_v2:
             if CONF.identity.uri:
-                self.token_client = TokenClientJSON(
+                self.token_client = TokenClient(
                     CONF.identity.uri, **self.default_params)
             else:
                 msg = 'Identity v2 API enabled, but no identity.uri set'
                 raise exceptions.InvalidConfiguration(msg)
         if CONF.identity_feature_enabled.api_v3:
             if CONF.identity.uri_v3:
-                self.token_v3_client = V3TokenClientJSON(
+                self.token_v3_client = V3TokenClient(
                     CONF.identity.uri_v3, **self.default_params)
             else:
                 msg = 'Identity v3 API enabled, but no identity.uri_v3 set'

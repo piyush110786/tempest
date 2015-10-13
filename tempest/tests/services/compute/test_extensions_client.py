@@ -12,43 +12,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import httplib2
-
-from oslo_serialization import jsonutils as json
-from oslotest import mockpatch
+from tempest_lib.tests import fake_auth_provider
 
 from tempest.services.compute.json import extensions_client
-from tempest.tests import base
-from tempest.tests import fake_auth_provider
+from tempest.tests.services.compute import base
 
 
-class TestExtensionsClient(base.TestCase):
+class TestExtensionsClient(base.BaseComputeServiceTest):
 
-    def setUp(self):
-        super(TestExtensionsClient, self).setUp()
-        fake_auth = fake_auth_provider.FakeAuthProvider()
-        self.client = extensions_client.ExtensionsClient(
-            fake_auth, 'compute', 'regionOne')
-
-    def _test_list_extensions(self, bytes_body=False):
-        body = '{"extensions": []}'
-        if bytes_body:
-            body = body.encode('utf-8')
-        expected = []
-        response = (httplib2.Response({'status': 200}), body)
-        self.useFixture(mockpatch.Patch(
-            'tempest.common.service_client.ServiceClient.get',
-            return_value=response))
-        self.assertEqual(expected, self.client.list_extensions())
-
-    def test_list_extensions_with_str_body(self):
-        self._test_list_extensions()
-
-    def test_list_extensions_with_bytes_body(self):
-        self._test_list_extensions(bytes_body=True)
-
-    def _test_show_extension(self, bytes_body=False):
-        expected = {
+    FAKE_SHOW_EXTENSION = {
+        "extension": {
             "updated": "2011-06-09T00:00:00Z",
             "name": "Multinic",
             "links": [],
@@ -57,16 +30,34 @@ class TestExtensionsClient(base.TestCase):
             "alias": "NMN",
             "description": u'\u2740(*\xb4\u25e1`*)\u2740'
         }
-        serialized_body = json.dumps({"extension": expected})
-        if bytes_body:
-            serialized_body = serialized_body.encode('utf-8')
+    }
 
-        mocked_resp = (httplib2.Response({'status': 200}), serialized_body)
-        self.useFixture(mockpatch.Patch(
+    def setUp(self):
+        super(TestExtensionsClient, self).setUp()
+        fake_auth = fake_auth_provider.FakeAuthProvider()
+        self.client = extensions_client.ExtensionsClient(
+            fake_auth, 'compute', 'regionOne')
+
+    def _test_list_extensions(self, bytes_body=False):
+        self.check_service_client_function(
+            self.client.list_extensions,
             'tempest.common.service_client.ServiceClient.get',
-            return_value=mocked_resp))
-        resp = self.client.show_extension("NMN")
-        self.assertEqual(expected, resp)
+            {"extensions": []},
+            bytes_body)
+
+    def test_list_extensions_with_str_body(self):
+        self._test_list_extensions()
+
+    def test_list_extensions_with_bytes_body(self):
+        self._test_list_extensions(bytes_body=True)
+
+    def _test_show_extension(self, bytes_body=False):
+        self.check_service_client_function(
+            self.client.show_extension,
+            'tempest.common.service_client.ServiceClient.get',
+            self.FAKE_SHOW_EXTENSION,
+            bytes_body,
+            extension_alias="NMN")
 
     def test_show_extension_with_str_body(self):
         self._test_show_extension()

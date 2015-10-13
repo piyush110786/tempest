@@ -30,7 +30,7 @@ class TestAdminAvailable(base.TestCase):
 
     def run_test(self, tenant_isolation, use_accounts_file, admin_creds):
 
-        cfg.CONF.set_default('allow_tenant_isolation',
+        cfg.CONF.set_default('use_dynamic_credentials',
                              tenant_isolation, group='auth')
         if use_accounts_file:
             accounts = [{'username': 'u1',
@@ -64,9 +64,9 @@ class TestAdminAvailable(base.TestCase):
             else:
                 (u, t, p) = (None, None, None)
 
-            cfg.CONF.set_default('admin_username', u, group='identity')
-            cfg.CONF.set_default('admin_tenant_name', t, group='identity')
-            cfg.CONF.set_default('admin_password', p, group='identity')
+            cfg.CONF.set_default('admin_username', u, group='auth')
+            cfg.CONF.set_default('admin_tenant_name', t, group='auth')
+            cfg.CONF.set_default('admin_password', p, group='auth')
 
         expected = admin_creds is not None or tenant_isolation
         observed = credentials.is_admin_available()
