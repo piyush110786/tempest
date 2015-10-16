@@ -14,6 +14,7 @@
 
 from tempest.api.compute import base
 from tempest import test
+from tempest_lib import decorators
 
 
 class TestVersions(base.BaseComputeTest):
@@ -37,6 +38,7 @@ class TestVersions(base.BaseComputeTest):
                          "The first listed version should be v2.0")
 
     @test.idempotent_id('b953a29e-929c-4a8e-81be-ec3a7e03cb76')
+    @decorators.skip_because(bug='1506447')
     def test_get_version_details(self):
         """Test individual version endpoints info works.
 

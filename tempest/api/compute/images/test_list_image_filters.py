@@ -39,6 +39,9 @@ class ListImageFiltersTestJSON(base.BaseV2ComputeTest):
         if not CONF.service_available.glance:
             skip_msg = ("%s skipped as glance is not available" % cls.__name__)
             raise cls.skipException(skip_msg)
+        elif not CONF.image.image_upload_allowed:
+             skip_msg = ("%s Non admin user dont have permission for image upload in glance" % cls.__name__)
+             raise cls.skipException(skip_msg)
 
     @classmethod
     def setup_clients(cls):
