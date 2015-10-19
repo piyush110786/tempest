@@ -499,7 +499,11 @@ ImageGroup = [
     cfg.IntOpt('build_interval',
                default=1,
                help="Time in seconds between image operation status "
-                    "checks.")
+                    "checks."),
+    cfg.BoolOpt('image_upload_allowed',
+                default=False,
+                help="Non admin user dont have permission for image upload in glance"
+                    "checks."),
 ]
 
 image_feature_group = cfg.OptGroup(name='image-feature-enabled',

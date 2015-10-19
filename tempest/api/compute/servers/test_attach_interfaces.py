@@ -189,7 +189,7 @@ class AttachInterfacesTestJSON(base.BaseV2ComputeTest):
         self._check_interface(ifs[0])
         network_id = ifs[0]['net_id']
         self.servers_client.add_fixed_ip(server['id'], networkId=network_id)
-        for port in self.client.list_interfaces(server['id']):
+        for port in self.client.list_interfaces(server['id'])['interfaceAttachments']:
             self.wait_for_interface_status(server['id'], port['port_id'],
                          "ACTIVE")
         # Remove the fixed IP from server.

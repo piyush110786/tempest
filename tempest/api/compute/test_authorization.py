@@ -37,6 +37,9 @@ class AuthorizationTestJSON(base.BaseV2ComputeTest):
         super(AuthorizationTestJSON, cls).skip_checks()
         if not CONF.service_available.glance:
             raise cls.skipException('Glance is not available.')
+        elif not CONF.image.image_upload_allowed:
+             skip_msg = ("%s Non admin user dont have permission for image upload in glance" % cls.__name__)
+             raise cls.skipException(skip_msg)
 
     @classmethod
     def setup_credentials(cls):

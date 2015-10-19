@@ -16,7 +16,7 @@
 from tempest.api.compute.security_groups import base
 from tempest import config
 from tempest import test
-
+from tempest_lib import decorators
 CONF = config.CONF
 
 
@@ -168,6 +168,7 @@ class SecurityGroupRulesTestJSON(base.BaseSecurityGroupsTest):
 
     @test.idempotent_id('fc5c5acf-2091-43a6-a6ae-e42760e9ffaf')
     @test.services('network')
+    @decorators.skip_because(bug='1470515')
     def test_security_group_rules_delete_when_peer_group_deleted(self):
         # Positive test:rule will delete when peer group deleting
         # Creating a Security Group to add rules to it
