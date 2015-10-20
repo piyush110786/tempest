@@ -18,6 +18,7 @@ from tempest.common.utils import data_utils
 from tempest.common import waiters
 from tempest import config
 from tempest import test
+from tempest_lib import decorators
 import testtools
 
 CONF = config.CONF
@@ -107,6 +108,7 @@ class VolumesV2ActionsTest(base.BaseVolumeTest):
 
     @test.idempotent_id('d8f1ca95-3d5b-44a3-b8ca-909691c9532d')
     @test.services('image')
+    @decorators.skip_because(bug='1507879')
     def test_volume_upload(self):
         # NOTE(gfidente): the volume uploaded in Glance comes from setUpClass,
         # it is shared with the other tests. After it is uploaded in Glance,

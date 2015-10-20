@@ -17,6 +17,8 @@ from tempest.common.utils import data_utils
 from tempest import config
 from tempest import test
 
+import time
+
 LOG = logging.getLogger(__name__)
 CONF = config.CONF
 
@@ -66,6 +68,7 @@ class VolumesV2SnapshotTestJSON(base.BaseVolumeTest):
     def test_snapshot_create_with_volume_in_use(self):
         # Create a snapshot when volume status is in-use
         # Create a test instance
+        time.sleep(5)
         server_name = data_utils.rand_name('instance')
         server = self.create_server(
             name=server_name,
