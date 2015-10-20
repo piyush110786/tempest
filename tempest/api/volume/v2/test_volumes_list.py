@@ -18,6 +18,7 @@ from six.moves.urllib import parse
 
 from tempest.api.volume import base
 from tempest import test
+from tempest_lib import decorators
 
 
 class VolumesV2ListTestJSON(base.BaseVolumeTest):
@@ -181,9 +182,11 @@ class VolumesV2ListTestJSON(base.BaseVolumeTest):
                 break
 
     @test.idempotent_id('e9138a2c-f67b-4796-8efa-635c196d01de')
+    @decorators.skip_because(bug='1506447')
     def test_volume_list_details_pagination(self):
         self._test_pagination('volumes', ids=self.volume_id_list, detail=True)
 
     @test.idempotent_id('af55e775-8e4b-4feb-8719-215c43b0238c')
+    @decorators.skip_because(bug='1506447')
     def test_volume_list_pagination(self):
         self._test_pagination('volumes', ids=self.volume_id_list, detail=False)
