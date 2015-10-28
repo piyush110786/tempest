@@ -62,6 +62,7 @@ class ScenarioTest(tempest.test.BaseTestCase):
         # Neutron network client
         cls.network_client = cls.manager.network_client
         cls.networks_client = cls.manager.networks_client
+        cls.subnets_client = cls.manager.subnets_client
         # Heat client
         cls.orchestration_client = cls.manager.orchestration_client
 
@@ -494,9 +495,23 @@ class ScenarioTest(tempest.test.BaseTestCase):
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             proc.communicate()
+
             return (proc.returncode == 0) == should_succeed
 
-        return tempest.test.call_until_true(ping, timeout, 1)
+        caller = misc_utils.find_test_caller()
+        LOG.debug('%(caller)s begins to ping %(ip)s in %(timeout)s sec and the'
+                  ' expected result is %(should_succeed)s' % {
+                      'caller': caller, 'ip': ip_address, 'timeout': timeout,
+                      'should_succeed':
+                      'reachable' if should_succeed else 'unreachable'
+                  })
+        result = tempest.test.call_until_true(ping, timeout, 1)
+        LOG.debug('%(caller)s finishes ping %(ip)s in %(timeout)s sec and the '
+                  'ping result is %(result)s' % {
+                      'caller': caller, 'ip': ip_address, 'timeout': timeout,
+                      'result': 'expected' if result else 'unexpected'
+                  })
+        return result
 
     def check_vm_connectivity(self, ip_address,
                               username=None,
@@ -558,8 +573,10 @@ class ScenarioTest(tempest.test.BaseTestCase):
             floating_ip['ip'], thing['id'])
         return floating_ip
 
-    def create_timestamp(self, server_or_ip, dev_name=None, mount_path='/mnt'):
-        ssh_client = self.get_remote_client(server_or_ip)
+    def create_timestamp(self, server_or_ip, dev_name=None, mount_path='/mnt',
+                         private_key=None):
+        ssh_client = self.get_remote_client(server_or_ip,
+                                            private_key=private_key)
         if dev_name is not None:
             ssh_client.make_fs(dev_name)
             ssh_client.mount(dev_name, mount_path)
@@ -571,8 +588,10 @@ class ScenarioTest(tempest.test.BaseTestCase):
             ssh_client.umount(mount_path)
         return timestamp
 
-    def get_timestamp(self, server_or_ip, dev_name=None, mount_path='/mnt'):
-        ssh_client = self.get_remote_client(server_or_ip)
+    def get_timestamp(self, server_or_ip, dev_name=None, mount_path='/mnt',
+                      private_key=None):
+        ssh_client = self.get_remote_client(server_or_ip,
+                                            private_key=private_key)
         if dev_name is not None:
             ssh_client.mount(dev_name, mount_path)
         timestamp = ssh_client.exec_command('sudo cat %s/timestamp'
@@ -630,7 +649,7 @@ class NetworkScenarioTest(ScenarioTest):
 
     def _list_subnets(self, *args, **kwargs):
         """List subnets using admin creds """
-        subnets_list = self.admin_manager.network_client.list_subnets(
+        subnets_list = self.admin_manager.subnets_client.list_subnets(
             *args, **kwargs)
         return subnets_list['subnets']
 
@@ -652,14 +671,16 @@ class NetworkScenarioTest(ScenarioTest):
             *args, **kwargs)
         return agents_list['agents']
 
-    def _create_subnet(self, network, client=None, namestart='subnet-smoke',
-                       **kwargs):
+    def _create_subnet(self, network, client=None, subnets_client=None,
+                       namestart='subnet-smoke', **kwargs):
         """
         Create a subnet for the given network within the cidr block
         configured for tenant networks.
         """
         if not client:
             client = self.network_client
+        if not subnets_client:
+            subnets_client = self.subnets_client
 
         def cidr_in_use(cidr, tenant_id):
             """
@@ -697,15 +718,16 @@ class NetworkScenarioTest(ScenarioTest):
                 **kwargs
             )
             try:
-                result = client.create_subnet(**subnet)
+                result = subnets_client.create_subnet(**subnet)
                 break
             except lib_exc.Conflict as e:
                 is_overlapping_cidr = 'overlaps with another subnet' in str(e)
                 if not is_overlapping_cidr:
                     raise
         self.assertIsNotNone(result, 'Unable to allocate tenant network')
-        subnet = net_resources.DeletableSubnet(client=client,
-                                               **result['subnet'])
+        subnet = net_resources.DeletableSubnet(
+            network_client=client, subnets_client=subnets_client,
+            **result['subnet'])
         self.assertEqual(subnet.cidr, str_cidr)
         self.addCleanup(self.delete_wrapper, subnet.delete)
         return subnet
@@ -726,7 +748,7 @@ class NetworkScenarioTest(ScenarioTest):
         return port
 
     def _get_server_port_id_and_ip4(self, server, ip_addr=None):
-        ports = self._list_ports(device_id=server['id'],
+        ports = self._list_ports(device_id=server['id'], status='ACTIVE',
                                  fixed_ip=ip_addr)
         # it might happen here that this port has more then one ip address
         # as in case of dual stack- when this port is created on 2 subnets
@@ -1062,7 +1084,8 @@ class NetworkScenarioTest(ScenarioTest):
         self.assertEqual(admin_state_up, router.admin_state_up)
 
     def create_networks(self, client=None, networks_client=None,
-                        tenant_id=None, dns_nameservers=None):
+                        subnets_client=None, tenant_id=None,
+                        dns_nameservers=None):
         """Create a network with a subnet connected to a router.
 
         The baremetal driver is a special case since all nodes are
@@ -1092,7 +1115,8 @@ class NetworkScenarioTest(ScenarioTest):
                 tenant_id=tenant_id)
             router = self._get_router(client=client, tenant_id=tenant_id)
 
-            subnet_kwargs = dict(network=network, client=client)
+            subnet_kwargs = dict(network=network, client=client,
+                                 subnets_client=subnets_client)
             # use explicit check because empty list is a valid option
             if dns_nameservers is not None:
                 subnet_kwargs['dns_nameservers'] = dns_nameservers

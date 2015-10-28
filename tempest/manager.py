@@ -47,14 +47,14 @@ class Manager(object):
         # Check if passed or default credentials are valid
         if not self.credentials.is_valid():
             raise exceptions.InvalidCredentials()
-        # Tenant isolation creates TestResources, but Accounts and some tests
-        # creates Credentials
+        # Tenant isolation creates TestResources, but
+        # PreProvisionedCredentialProvider and some tests create Credentials
         if isinstance(credentials, cred_provider.TestResources):
             creds = self.credentials.credentials
         else:
             creds = self.credentials
         # Creates an auth provider for the credentials
-        self.auth_provider = get_auth_provider(creds)
+        self.auth_provider = get_auth_provider(creds, pre_auth=True)
         # FIXME(andreaf) unused
         self.client_attr_names = []
 
@@ -66,7 +66,7 @@ def get_auth_provider_class(credentials):
         return auth.KeystoneV2AuthProvider, CONF.identity.uri
 
 
-def get_auth_provider(credentials):
+def get_auth_provider(credentials, pre_auth=False):
     default_params = {
         'disable_ssl_certificate_validation':
             CONF.identity.disable_ssl_certificate_validation,
@@ -78,4 +78,8 @@ def get_auth_provider(credentials):
             'Credentials must be specified')
     auth_provider_class, auth_url = get_auth_provider_class(
         credentials)
-    return auth_provider_class(credentials, auth_url, **default_params)
+    _auth_provider = auth_provider_class(credentials, auth_url,
+                                         **default_params)
+    if pre_auth:
+        _auth_provider.set_auth()
+    return _auth_provider

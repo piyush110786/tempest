@@ -40,8 +40,8 @@ class ServersClient(service_client.ServiceClient):
         self.bfv_cleanup = boot_from_vol_client.get_cleanBFV_obj(auth_provider)
 
     def create_server(self, **kwargs):
-        """
-        Creates an instance of a server.
+        """Create server
+
         Most parameters except the following are passed to the API without
         any changes.
         :param disk_config: The name is changed to OS-DCF:diskConfig
@@ -87,7 +87,8 @@ class ServersClient(service_client.ServiceClient):
         return service_client.ResponseBody(resp, body)
 
     def update_server(self, server_id, **kwargs):
-        """Updates the properties of an existing server.
+        """Update server
+
         Most parameters except the following are passed to the API without
         any changes.
         :param disk_config: The name is changed to OS-DCF:diskConfig
@@ -102,7 +103,7 @@ class ServersClient(service_client.ServiceClient):
         return service_client.ResponseBody(resp, body)
 
     def show_server(self, server_id):
-        """Returns the details of an existing server."""
+        """Get server details"""
         resp, body = self.get("servers/%s" % server_id)
         body = json.loads(body)
         self.validate_response(schema.get_server, resp, body)
@@ -121,7 +122,7 @@ class ServersClient(service_client.ServiceClient):
         return service_client.ResponseBody(resp, body)
 
     def list_servers(self, detail=False, **params):
-        """Lists all servers for a user."""
+        """List servers"""
 
         url = 'servers'
         _schema = schema.list_servers

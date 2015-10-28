@@ -23,6 +23,8 @@ from tempest.tests import fake_config
 
 class TestAdminAvailable(base.TestCase):
 
+    identity_version = 'v2'
+
     def setUp(self):
         super(TestAdminAvailable, self).setUp()
         self.useFixture(fake_config.ConfigFixture())
@@ -50,7 +52,7 @@ class TestAdminAvailable(base.TestCase):
                                  'password': 'p',
                                  'types': ['admin']})
             self.useFixture(mockpatch.Patch(
-                'tempest.common.accounts.read_accounts_yaml',
+                'tempest.common.preprov_creds.read_accounts_yaml',
                 return_value=accounts))
             cfg.CONF.set_default('test_accounts_file',
                                  use_accounts_file, group='auth')
@@ -60,16 +62,18 @@ class TestAdminAvailable(base.TestCase):
             self.useFixture(mockpatch.Patch('os.path.isfile',
                                             return_value=False))
             if admin_creds:
-                (u, t, p) = ('u', 't', 'p')
+                (u, t, p, d) = ('u', 't', 'p', 'd')
             else:
-                (u, t, p) = (None, None, None)
+                (u, t, p, d) = (None, None, None, None)
 
             cfg.CONF.set_default('admin_username', u, group='auth')
             cfg.CONF.set_default('admin_tenant_name', t, group='auth')
             cfg.CONF.set_default('admin_password', p, group='auth')
+            cfg.CONF.set_default('admin_domain_name', d, group='auth')
 
         expected = admin_creds is not None or tenant_isolation
-        observed = credentials.is_admin_available()
+        observed = credentials.is_admin_available(
+            identity_version=self.identity_version)
         self.assertEqual(expected, observed)
 
     # Tenant isolation implies admin so only one test case for True
@@ -102,3 +106,8 @@ class TestAdminAvailable(base.TestCase):
         self.run_test(tenant_isolation=False,
                       use_accounts_file=False,
                       admin_creds='role')
+
+
+class TestAdminAvailableV3(TestAdminAvailable):
+
+    identity_version = 'v3'
